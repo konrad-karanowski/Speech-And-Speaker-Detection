@@ -5,16 +5,17 @@ import glob
 import pandas as pd
 
 
-def get_classes(path: str) -> List[str]:
+def get_classes(path: str, ignored: List[str] = ['_background_noise_']) -> List[str]:
     """Read classes list using glob
 
     Args:
         path (str): path to root data directory
+        ignored (List[str]): list of strings that cannot be involved in path 
 
     Returns:
         List[str]: list of classes
     """
-    return [k.split('/')[-1] for k, _, _ in os.walk(path) if not '_background_noise_' in k and 'archive/' in k]
+    return [k.path.split('/')[-1] for k in os.scandir(path) if not any(x in k.path for x in ignored)]
 
 
 def create_df(classes: List[str], path: str) -> pd.DataFrame:

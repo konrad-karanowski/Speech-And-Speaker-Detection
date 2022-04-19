@@ -35,7 +35,7 @@ class SpeechDataModule(pl.LightningDataModule):
         if not os.path.exists(os.path.join(img_dir)):
             self._create_spectrograms(data_dir, img_dir)
 
-
+        print(img_dir)
         self.data = create_df(
             classes=get_classes(img_dir),
             path=img_dir
@@ -71,7 +71,7 @@ class SpeechDataModule(pl.LightningDataModule):
                 window_function=self.config.window_function
             )
             new_path = path.replace(self.config.data_dir, self.config.img_dir).replace('.wav', '.jpg')
-            plt.imsave(new_path, spectrogram)
+            plt.imsave(new_path, spectrogram, cmap='gray')
 
     def setup(self) -> None:
         pass
