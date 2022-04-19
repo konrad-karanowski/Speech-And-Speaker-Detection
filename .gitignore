@@ -1,4 +1,5 @@
-archive/*
+data/*
+notebooks/*
 *.wav
 
 # Byte-compiled / optimized / DLL files
