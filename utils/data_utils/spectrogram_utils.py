@@ -24,7 +24,7 @@ def create_spectrogram(
     """Creates spectrogram using Short-Time Fourier's Transform
 
     Args:
-        x (np.ndarray): signal of shape (N,)
+        audio (np.ndarray): signal of shape (N,)
         frame_size (int, optional): Size of frame. Must be power of 2. Defaults to 2048.
         hop_size (int, optional): Size of hop. Defaults to 512.
         window_function (str, optional): Function to convolve partial signal with. Defaults to 'hann'.
@@ -59,6 +59,20 @@ def create_mel_spectrogram(
     ref: Optional[Function] = None,
     *args,
     **kwargs) -> np.ndarray:
+    """Creates mel spectrogram
+
+    Args:
+        audio (np.ndarray): _description_
+        sr (int): _description_
+        frame_size (int): _description_
+        hop_size (int): _description_
+        window_function (str, optional): _description_. Defaults to 'hann'.
+        num_mels (int, optional): _description_. Defaults to 128.
+        ref (Optional[Function], optional): _description_. Defaults to None.
+
+    Returns:
+        np.ndarray: _description_
+    """
     mel_spectrogram = librosa.feature.melspectrogram(
         y=audio,
         sr=sr,
@@ -73,3 +87,50 @@ def create_mel_spectrogram(
         spectrogram = librosa.power_to_db(np.abs(mel_spectrogram))
     return spectrogram
 
+
+def _maybe_resample_signal(
+        signal: np.ndarray, 
+        sr: int, 
+        target_sr: int, 
+        res_type: str
+    ) -> np.ndarray:
+    if sr != target_sr:
+        signal = librosa.resample(
+            signal, 
+            orig_sr=sr, 
+            target_sr=target_sr, 
+            res_type=res_type
+        )
+    return signal
+
+def _maybe_cut_down_signal(
+        signal: np.ndarray,
+        target_num_samples
+    ) -> np.ndarray:
+    if signal.shape[0] > target_num_samples:
+        signal = signal[:target_num_samples]
+    return signal
+
+def _maybe_pad_right_signal(
+        signal: np.ndarray,
+        target_num_samples
+    ) -> np.ndarray:
+    if signal.shape[0] < target_num_samples:
+        zeros = np.zeros(target_num_samples)
+        zeros[:signal.shape[0]] = signal
+        signal = zeros
+    return signal
+
+
+def preprocess_signal(
+        signal: np.ndarray, 
+        sr: int,
+        target_sr: int,
+        target_num_samples: int,
+        res_type: str,
+    ) -> np.ndarray:
+    signal = _maybe_resample_signal(signal, sr, target_sr, res_type)
+    signal = _maybe_pad_right_signal(signal, target_num_samples)
+    signal = _maybe_cut_down_signal(signal, target_num_samples)
+    return signal
+    
