@@ -1,5 +1,7 @@
 data/*
 notebooks/*
+wandb/*
+.idea
 *.wav
 
 # Byte-compiled / optimized / DLL files

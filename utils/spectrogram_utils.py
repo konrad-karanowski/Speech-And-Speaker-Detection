@@ -3,17 +3,17 @@ from typing import *
 import librosa
 import numpy as np
 
-from utils.data_utils.fourier_transform import stft
+from utils.fourier_transform import stft
 
 
 def create_spectrogram(
-    audio: np.ndarray, 
-    frame_size: int, 
-    hop_size: int, 
-    window_function: str = 'hann', 
-    ref: Optional[Callable] = None,
-    *args,
-    **kwargs) -> np.ndarray:
+        audio: np.ndarray,
+        frame_size: int,
+        hop_size: int,
+        window_function: str = 'hann',
+        ref: Optional[Callable] = None,
+        *args,
+        **kwargs) -> np.ndarray:
     """Creates spectrogram using Short-Time Fourier's Transform
 
     Args:
@@ -30,8 +30,8 @@ def create_spectrogram(
         np.ndarray: spectrogram of size (freq_bins, win_size) = (frame_size // 2 + 1, (n_samples - frame_size) // hop_size + 1)
     """
     x_ft = stft(
-        x=audio, 
-        frame_size=frame_size, 
+        x=audio,
+        frame_size=frame_size,
         hop_size=hop_size,
         window_function=window_function,
     )
@@ -43,15 +43,15 @@ def create_spectrogram(
 
 
 def create_mel_spectrogram(
-    audio: np.ndarray,
-    sr: int,
-    frame_size: int, 
-    hop_size: int, 
-    window_function: str = 'hann', 
-    num_mels: int = 128, 
-    ref: Optional[Callable] = None,
-    *args,
-    **kwargs) -> np.ndarray:
+        audio: np.ndarray,
+        sr: int,
+        frame_size: int,
+        hop_size: int,
+        window_function: str = 'hann',
+        num_mels: int = 128,
+        ref: Optional[Callable] = None,
+        *args,
+        **kwargs) -> np.ndarray:
     """Creates mel spectrogram
 
     Args:
@@ -72,7 +72,8 @@ def create_mel_spectrogram(
         n_fft=frame_size,
         hop_length=hop_size,
         window=window_function,
-        center=False
+        center=False,
+        n_mels=num_mels
     )
     if ref is not None:
         spectrogram = librosa.power_to_db(np.abs(mel_spectrogram), ref=ref)
@@ -82,11 +83,11 @@ def create_mel_spectrogram(
 
 
 def _maybe_resample_signal(
-        signal: np.ndarray, 
-        sr: int, 
-        target_sr: int, 
+        signal: np.ndarray,
+        sr: int,
+        target_sr: int,
         res_type: str
-    ) -> np.ndarray:
+) -> np.ndarray:
     """Resample signal if necessary
 
     Args:
@@ -100,17 +101,18 @@ def _maybe_resample_signal(
     """
     if sr != target_sr:
         signal = librosa.resample(
-            signal, 
-            orig_sr=sr, 
-            target_sr=target_sr, 
+            signal,
+            orig_sr=sr,
+            target_sr=target_sr,
             res_type=res_type
         )
     return signal
 
+
 def _maybe_cut_down_signal(
         signal: np.ndarray,
         target_num_samples
-    ) -> np.ndarray:
+) -> np.ndarray:
     """Cut down signal if necessary
 
     Args:
@@ -124,10 +126,11 @@ def _maybe_cut_down_signal(
         signal = signal[:target_num_samples]
     return signal
 
+
 def _maybe_pad_right_signal(
         signal: np.ndarray,
         target_num_samples
-    ) -> np.ndarray:
+) -> np.ndarray:
     """Pad signal with zeros if necessary
 
     Args:
@@ -145,12 +148,12 @@ def _maybe_pad_right_signal(
 
 
 def preprocess_signal(
-        signal: np.ndarray, 
+        signal: np.ndarray,
         sr: int,
         target_sr: int,
         target_num_samples: int,
         res_type: str,
-    ) -> np.ndarray:
+) -> np.ndarray:
     """Process signal adjusting sample rate and length
 
     Args:
@@ -167,4 +170,3 @@ def preprocess_signal(
     signal = _maybe_pad_right_signal(signal, target_num_samples)
     signal = _maybe_cut_down_signal(signal, target_num_samples)
     return signal
-    

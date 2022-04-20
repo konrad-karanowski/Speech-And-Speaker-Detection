@@ -1,5 +1,9 @@
 from dataset import SpeechDataModule
-import matplotlib.pyplot as plt
+from models import SiameseModel
+from pytorch_lightning.loggers import WandbLogger
+
+from utils import train_test
+
 
 class AttributeDict(dict):
     """
@@ -19,8 +23,9 @@ class AttributeDict(dict):
     __getattr__ = dict.__getitem__
     __setattr__ = dict.__setitem__
 
+
 config = AttributeDict({
-    'root': 'data',
+    'root': r'C:\Users\Konrad\Desktop\PythonProjects\Speech-And-Speaker-Detection\data',
     'data_dir': 'archive',
     'img_dir': 'mel_spectrogram',
 
@@ -28,11 +33,13 @@ config = AttributeDict({
     'hop_size': 128,
     'window_function': 'hann',
 
-    'batch_size': 32,
+    'batch_size': 16,
 
     'target_sr': 22050,
     'target_num_samples': 22050,
     'res_type': 'kaiser_best',
+
+    'input_shape': (128, 128)
 })
 
 
@@ -41,20 +48,16 @@ def main():
     datamodule.prepare_data()
     datamodule.setup()
 
-    train = datamodule.train_dataloader()
+    model = SiameseModel(config)
 
-    i = 0
-    for l in train:
-        x, y, z = l['anchor'][0, :], l['positive'][0, :], l['negative'][0, :]
-        fig, ax = plt.subplots(1, 3)
-        ax[0].set_title(l['positive_label'][0])
-        ax[0].imshow(x.squeeze(0))
-        ax[1].set_title(l['positive_label'][0])
-        ax[1].imshow(y.squeeze(0))
-        ax[2].set_title(l['negative_label'][0])
-        ax[2].imshow(z.squeeze(0))
-        plt.show()
-        break
+    logger = WandbLogger(
+        config=config,
+        entity='kn-bmi',
+        project='TEST',
+        log_model=False
+    )
+
+    train_test(model, datamodule, logger, config)
 
 
 if __name__ == '__main__':
