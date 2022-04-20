@@ -1,4 +1,3 @@
-from pyclbr import Function
 from typing import *
 
 import librosa
@@ -7,18 +6,12 @@ import numpy as np
 from utils.data_utils.fourier_transform import stft
 
 
-def scale(x: np.ndarray, x_min: float = 0.0, x_max: float = 1.0) -> np.ndarray:
-    x_std = (x - x.min()) / (x.max() - x.min())
-    x_scaled = x_std * (x_max - x_min) + x_min
-    return x_scaled
-
-
 def create_spectrogram(
     audio: np.ndarray, 
     frame_size: int, 
     hop_size: int, 
     window_function: str = 'hann', 
-    ref: Optional[Function] = None,
+    ref: Optional[Callable] = None,
     *args,
     **kwargs) -> np.ndarray:
     """Creates spectrogram using Short-Time Fourier's Transform
@@ -56,7 +49,7 @@ def create_mel_spectrogram(
     hop_size: int, 
     window_function: str = 'hann', 
     num_mels: int = 128, 
-    ref: Optional[Function] = None,
+    ref: Optional[Callable] = None,
     *args,
     **kwargs) -> np.ndarray:
     """Creates mel spectrogram
@@ -94,6 +87,17 @@ def _maybe_resample_signal(
         target_sr: int, 
         res_type: str
     ) -> np.ndarray:
+    """Resample signal if necessary
+
+    Args:
+        signal (np.ndarray): original signal
+        sr (int): original sample rate
+        target_sr (int): desired sample rate
+        res_type (str): strategy for sample rate
+
+    Returns:
+        np.ndarray: processed signal
+    """
     if sr != target_sr:
         signal = librosa.resample(
             signal, 
@@ -107,6 +111,15 @@ def _maybe_cut_down_signal(
         signal: np.ndarray,
         target_num_samples
     ) -> np.ndarray:
+    """Cut down signal if necessary
+
+    Args:
+        signal (np.ndarray): original signal
+        target_num_samples (_type_): target number of samples
+
+    Returns:
+        np.ndarray: processed signal
+    """
     if signal.shape[0] > target_num_samples:
         signal = signal[:target_num_samples]
     return signal
@@ -115,6 +128,15 @@ def _maybe_pad_right_signal(
         signal: np.ndarray,
         target_num_samples
     ) -> np.ndarray:
+    """Pad signal with zeros if necessary
+
+    Args:
+        signal (np.ndarray): original signal
+        target_num_samples (_type_): target number of samples 
+
+    Returns:
+        np.ndarray: processed signal
+    """
     if signal.shape[0] < target_num_samples:
         zeros = np.zeros(target_num_samples)
         zeros[:signal.shape[0]] = signal
@@ -129,6 +151,18 @@ def preprocess_signal(
         target_num_samples: int,
         res_type: str,
     ) -> np.ndarray:
+    """Process signal adjusting sample rate and length
+
+    Args:
+        signal (np.ndarray): base signal
+        sr (int): original sampling rate
+        target_sr (int): target sampling rate
+        target_num_samples (int): target number of samples
+        res_type (str): strategy for resampling 
+
+    Returns:
+        np.ndarray: processed signal
+    """
     signal = _maybe_resample_signal(signal, sr, target_sr, res_type)
     signal = _maybe_pad_right_signal(signal, target_num_samples)
     signal = _maybe_cut_down_signal(signal, target_num_samples)

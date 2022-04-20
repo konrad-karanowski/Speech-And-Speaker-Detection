@@ -5,8 +5,6 @@ import numpy as np
 import pandas as pd
 from torch.utils.data import Dataset
 from torchvision.transforms import Compose
-from skimage import io
-
 
 
 class TripletDataset(Dataset):

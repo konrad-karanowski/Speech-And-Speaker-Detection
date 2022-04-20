@@ -25,34 +25,38 @@ class SpeechDataModule(pl.LightningDataModule):
 
     def prepare_data(self) -> None:
         """Base pipeline for preparing data:
-        1. Download data if not exists TODO
-        2. Create dataframe from wav dataset
-        3. Create spectrograms using stft
-        4. Create dataframe from image dataset
+
+        - Download data if not exists TODO
+        - Create dataframe from wav dataset
+        - Create spectrograms using stft
+        - Create dataframe from image dataset
         """
         data_dir = os.path.join(self.config.root, self.config.data_dir)
         img_dir = os.path.join(self.config.root, self.config.img_dir)
 
-        if not os.path.exists(os.path.join(data_dir)):
-            # TODO download data
-            print('Nie ma datasetu, pobiez go -.-')
-
-        if not os.path.exists(os.path.join(img_dir)):
-            self._create_spectrograms(data_dir, img_dir)
+        self._maybe_download_data(data_dir)
+        self._maybe_create_spectrograms(data_dir, img_dir)
 
         self.data = create_df(
             classes=get_classes(img_dir),
             path=img_dir
         )
 
+    def _maybe_download_data(self, data_dir: str) -> None:
+        # TODO, do this 
+        if os.path.exits(data_dir):
+            return
 
-    def _create_spectrograms(self, data_dir: str, img_dir: str):
+    def _maybe_create_spectrograms(self, data_dir: str, img_dir: str) -> None:
         """Create spectrograms from audio files
 
         Args:
             data_dir (str): combined path to raw audio data
             img_dir (str): combined path to spectrograms data
         """
+        if os.path.exists(os.path.join(img_dir)):
+            return
+
         # create df
         classes = get_classes(data_dir)
         df = create_df(classes, data_dir)
@@ -73,12 +77,6 @@ class SpeechDataModule(pl.LightningDataModule):
                 res_type=self.config.res_type
             )
             # TODO add different spectrograms
-            # spectrogram = create_spectrogram(
-            #     audio=audio,
-            #     frame_size=self.config.frame_size,
-            #     hop_size=self.config.hop_size,
-            #     window_function=self.config.window_function
-            # )
             spectrogram = create_mel_spectrogram(
                 audio=processed_audio,
                 sr=sr,
@@ -86,7 +84,7 @@ class SpeechDataModule(pl.LightningDataModule):
                 hop_size=self.config.hop_size,
                 window_function=self.config.window_function
             )
-            new_path = path.replace(self.config.data_dir, self.config.img_dir).replace('.wav', '.jpg')
+            new_path = path.replace(self.config.data_dir, self.config.img_dir).replace('.wav', '.npy')
             np.save(new_path, spectrogram)
 
     def setup(self) -> None:
