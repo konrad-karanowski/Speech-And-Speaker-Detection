@@ -2,8 +2,11 @@ from typing import *
 
 import torch
 from torch import nn
+import numpy as np
 import torch.nn.functional as F
 import pytorch_lightning as pl
+
+from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
 
 
 class SiameseHead(nn.Module):
@@ -30,7 +33,9 @@ class Backbone(nn.Module):
             nn.Conv2d(16, 32, (3, 3)),
             nn.MaxPool2d(3),
             nn.ReLU(),
-            nn.Conv2d(32, 64, (3, 3))
+            nn.Conv2d(32, 64, (3, 3)),
+            nn.MaxPool2d(3),
+            nn.ReLU()
         )
         self.flatten = nn.Flatten()
 
@@ -48,8 +53,8 @@ class SiameseModel(pl.LightningModule):
         self.criterion_label = nn.TripletMarginLoss()
         self.criterion_speaker = nn.TripletMarginLoss()
         self.backbone = Backbone(config)
-        self.head_label = SiameseHead(config, 9856)
-        self.head_speaker = SiameseHead(config, 9856)
+        self.head_label = SiameseHead(config, 768)
+        self.head_speaker = SiameseHead(config, 768)
 
     def configure_optimizers(self):
         params = list(self.backbone.parameters()) + list(self.head_label.parameters()) + list(
@@ -63,49 +68,42 @@ class SiameseModel(pl.LightningModule):
         h1, h2 = self.head_label(fe), self.head_speaker(fe)
         return h1, h2
 
-    def _calculate_pairwise_distances(self, anchor_rep: torch.Tensor, support_rep: Tuple[torch.Tensor]) -> torch.Tensor:
-        distances = torch.tensor([
-            F.pairwise_distance(anchor_rep, rep) for rep in support_rep
-        ])
-        return distances
-
-    def _predict(self, query_emb, support, bs):
-        support_label_emb = self.backbone(support)
-        label_emb = torch.cat([query_emb, support_label_emb])
-        label_repr = self.head_label(label_emb).split(bs, dim=0)
-        distances = self._calculate_pairwise_distances(
-            anchor_rep=label_repr[0],
-            support_rep=label_repr[1:]
-        )
-        predict = torch.argmin(distances)
-        proba = 1 / (torch.abs(distances[predict]) + 1e-10)
-        return predict, proba
+    def _calculate_distances(self, query_repr: torch.Tensor, support_repr: torch.Tensor, p: int = 2) -> torch.Tensor:
+        return torch.cdist(query_repr.unsqueeze(0), support_repr.unsqueeze(0), p=p).squeeze(0)
 
     def predict(self,
                 query: torch.Tensor,
                 support_label: Optional[torch.Tensor],
                 support_speaker: Optional[torch.Tensor]
-                ) -> Dict[str, torch.Tensor]:
-        prediction = {
-            'label_pred': None,
-            'label_proba': None,
-            'speaker_pred': None,
-            'speaker_proba': None
-        }
+                ) -> Tuple[torch.Tensor, torch.Tensor]:
+        # support is of size [num_classes, ch, h, w]
+        num_labels, ch, h, w = support_label.shape
+        num_speakers, ch, h, w = support_speaker.shape
+        bs, ch, h, w = query.shape
+        # concat everything
+        samples = torch.cat([query, support_label, support_speaker], dim=0)
+        # pass through backbone
+        embedding = self.backbone(samples)
 
-        bs = query.shape[0]
-        query_emb = self.backbone(query)
-        if support_label is not None:
-            label_predict, label_proba = self._predict(query_emb, support_label, bs)
-            prediction['label_pred'] = label_predict
-            prediction['label_proba'] = label_proba
+        query_emb, label_emb, speaker_emb = \
+            embedding[:bs], embedding[bs:(bs + num_labels)], embedding[(bs + num_labels):]
 
-        if support_speaker is not None:
-            speaker_predict, speaker_proba = self._predict(query_emb, support_speaker, bs)
-            prediction['speaker_pred'] = speaker_predict
-            prediction['speaker_proba'] = speaker_proba
+        label_repr = self.head_label(
+            torch.cat([query_emb, label_emb], dim=0)
+        )
+        query_label_repr = label_repr[:bs]
+        support_label_repr = label_repr[bs:]
 
-        return prediction
+        speaker_repr = self.head_label(
+            torch.cat([query_emb, speaker_emb], dim=0)
+        )
+        query_speaker_repr = speaker_repr[:bs]
+        support_speaker_repr = speaker_repr[bs:]
+
+        label_distances = self._calculate_distances(query_label_repr, support_label_repr, p=2)
+        speaker_distances = self._calculate_distances(query_speaker_repr, support_speaker_repr, p=2)
+
+        return label_distances, speaker_distances
 
     def _inner_step(self, batch) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         anchor, pos_label, neg_label, pos_speaker, neg_speaker = batch['anchor'], batch['pos_label'], \
@@ -148,14 +146,46 @@ class SiameseModel(pl.LightningModule):
         })
         return total_loss
 
-    def test_step(self, batch, batch_idx, *args, **kwargs) -> None:
-        label_loss, speaker_loss, total_loss = self._inner_step(batch)
+    def test_step(self, batch, batch_idx, *args, **kwargs) -> Dict[str, torch.Tensor]:
+        anchor, pos_label, neg_label, pos_speaker, neg_speaker = batch['anchor'], batch['pos_label'], \
+                                                                 batch['neg_label'], batch['pos_speaker'], batch[
+                                                                     'neg_speaker']
+        batch_size = anchor.shape[0]
+        support_label = torch.cat([pos_label[0, :], neg_label[0, :]], dim=0)[:, None]
+        support_speaker = torch.cat([pos_speaker[0, :], neg_speaker[0, :]], dim=0)[:, None]
+        label_distances, speaker_distances = self.predict(
+            query=anchor,
+            support_label=support_label,
+            support_speaker=support_speaker
+        )
 
-        self.log_dict({
-            'test_label_loss': label_loss.item(),
-            'test_speaker_loss': speaker_loss.item(),
-            'test_total_loss': total_loss.item()
-        })
+        true_labels = torch.cat([torch.ones(batch_size), torch.zeros(batch_size)]).cpu()
+        binary_label_preds = label_distances.transpose(0, 1).reshape(-1).cpu()
+        binary_speaker_preds = speaker_distances.transpose(0, 1).reshape(-1).cpu()
+        return {
+            'true': true_labels,
+            'label_preds': binary_label_preds,
+            'speaker_preds': binary_speaker_preds
+        }
 
-    def _test_model(self):
-        pass
+    def _calculate_metrics(self, role: str, y_true: Iterable[int], y_pred: np.ndarray) -> Dict[str, float]:
+        return {
+            f'{role}_accuracy': accuracy_score(y_true, np.where(y_pred < 5, 1, 0)),
+            f'{role}_f1_score': f1_score(y_true, np.where(y_pred < 5, 1, 0)),
+            f'{role}_precision_score': precision_score(y_true, np.where(y_pred < 5, 1, 0)),
+            f'{role}_recall_score': recall_score(y_true, np.where(y_pred < 5, 1, 0)),
+        }
+
+    def test_epoch_end(self, outputs: Iterable[Dict[str, torch.Tensor]]) -> None:
+
+        trues = []
+        label_preds = []
+        speaker_preds = []
+        for output in outputs:
+            trues.extend(output['true'])
+            label_preds.extend(output['label_preds'])
+            speaker_preds.extend(output['speaker_preds'])
+        label_dict = self._calculate_metrics('label', trues, np.array(label_preds))
+        speaker_dict = self._calculate_metrics('speaker', trues, np.array(speaker_preds))
+        self.log_dict(label_dict)
+        self.log_dict(speaker_dict)

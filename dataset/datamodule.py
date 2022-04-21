@@ -93,8 +93,8 @@ class SpeechDataModule(pl.LightningDataModule):
     def setup(self) -> None:
         """Setup data for experiment
         """
-        train_df, remain = train_test_split(self.data, test_size=0.3, random_state=1, stratify=self.data['label'])
-        val_df, test_df = train_test_split(remain, test_size=0.8, random_state=1, stratify=remain['label'])
+        train_df, remain = train_test_split(self.data, test_size=0.95, random_state=1, stratify=self.data['label'])
+        val_df, test_df = train_test_split(remain, test_size=0.95, random_state=1, stratify=remain['label'])
 
         train_df['split'] = 'train'
         val_df['split'] = 'val'

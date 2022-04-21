@@ -8,7 +8,7 @@ def train_test(
         config
 ):
     datamodule.setup()
-    trainer = pl.Trainer(gpus=-1, logger=logger)
+    trainer = pl.Trainer(gpus=-1, logger=logger, max_epochs=10)
     train_loader = datamodule.train_dataloader()
     val_loader = datamodule.val_dataloader()
     test_loader = datamodule.test_dataloader()
