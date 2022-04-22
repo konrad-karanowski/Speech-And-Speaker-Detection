@@ -1,23 +1,15 @@
-# deterministic
+# metadata specialised for each experiment
+core:
+  project_name: 'Speech_And_Speaker_Detection'
+  storage_dir: ${oc.env:PROJECT_ROOT}/logs
+  version: 0.0.1
+  tags: null
 
-
-trainer:
-  gpus: -1
-  max_epochs: 100
-  min_epochs: 0
-
-datamodule:
-  data_url: ''
-  train_vs_rest_size: 0.8
-  val_vs_test_size: 0.3
-
-  # process signal
-  target_sr: 22050
-  taregt_num_samples: 22050
-  res_type: 'kaiser_best'
-
-  # spectrogram
-  frame_size: 2048
-  hop_size: 128
-  window_function: 'hann'
-
+defaults:
+  - hydra: default
+  - model: default
+  - datamodule: default
+  - train: default
+  - _self_
+  # - _self_ 
+#  - hydra/launcher: joblib

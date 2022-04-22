@@ -1,0 +1,25 @@
+datamodule:
+
+  _target_: datamodules.datamodule.SpeechDataModule
+
+  params:
+    # process signal
+    target_sr: 22050
+    target_num_samples: 22050 
+    res_type: 'kaiser_best'
+
+    # create spectrogram
+    frame_size: 2048 
+    hop_size: 128
+    window_function: 'hann'
+    num_mels: 128
+
+    # data paths
+    root: '/home/konradkaranowski/storage'
+    data_dir: 'speech'
+    img_dir: 'mel_spectrogram'
+
+    # datasets specs
+    train_vs_rest_size: 0.8
+    val_vs_test_size: 0.4
+    batch_size: 32

@@ -2,21 +2,18 @@ from typing import *
 import abc
 import os
 from datetime import datetime
-from sklearn import metrics
 
 import wandb
 import pandas as pd
 import numpy as np
 from pytorch_lightning.callbacks import Callback
 
+from common import PROJECT_ROOT
+
 
 class AbstractSaveOutputsCallback(Callback):
 
     def __init__(self) -> None:
-        """Saves the predictions to the .csv file. Csv file is stored in:
-        ``` logs/wandb/{wandb.run.dir}/files/{save_name}``` 
-        Stored attributes: [label_distance, speaker_distance, label, speaker_id, anchor_label, anchor_speaker]
-        """
         super(AbstractSaveOutputsCallback, self).__init__()
         self.outputs = []
 
@@ -26,7 +23,6 @@ class AbstractSaveOutputsCallback(Callback):
     def _create_dataframe(self) -> pd.DataFrame:
         if not self.outputs:
             return None
-
         dfs = []
         for suboutput in self.outputs:
 
@@ -51,7 +47,6 @@ class SaveOutputsWandb(AbstractSaveOutputsCallback):
         df = self._create_dataframe()
         if df is not None:
             df.to_csv(os.path.join(wandb.run.dir, self.save_name), index=False)
-        # TODO warning
 
 
 class SaveOutputsLocal(AbstractSaveOutputsCallback):
@@ -59,10 +54,7 @@ class SaveOutputsLocal(AbstractSaveOutputsCallback):
     def __init__(self, save_dir: str, **kwargs) -> None:
 
         super(SaveOutputsLocal, self).__init__()
-        self.save_dir = os.path.join(
-            'logs',
-            'outputs',
-            save_dir)
+        self.save_dir = str(PROJECT_ROOT / save_dir)
         if not os.path.exists(self.save_dir):
             os.makedirs(self.save_dir)
         self.save_name = f"{datetime.now().strftime('%m%d%Y_%h%m%s')}" + '_'.join(f'{key}={value}' for key, value in kwargs.items()) + ".csv"

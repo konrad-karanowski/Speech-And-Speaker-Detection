@@ -1,26 +1,27 @@
+import os
+import shutil
 from typing import *
 
-import shutil
-import os
-import pytorch_lightning as pl
-import pandas as pd
-import tqdm
 import librosa
 import numpy as np
+import pandas as pd
+import pytorch_lightning as pl
+import tqdm
 from sklearn.model_selection import train_test_split
 from torch.utils.data import DataLoader
+from utils import (create_df, create_mel_spectrogram, create_spectrogram,
+                   get_classes, preprocess_signal)
 
-from dataset.transforms import default_transform
-from dataset.triplet_dataset import TripletDataset
-from dataset.classification_dataset import ClassificationDataset
-from utils import create_df, get_classes, create_spectrogram, create_mel_spectrogram, preprocess_signal
+from datamodules.classification_dataset import ClassificationDataset
+from datamodules.transforms import default_transform
+from datamodules.triplet_dataset import TripletDataset
 
 
 class SpeechDataModule(pl.LightningDataModule):
 
-    def __init__(self, config):
+    def __init__(self, params):
         super(SpeechDataModule, self).__init__()
-        self.config = config
+        self.config = params
         self.data = None
 
     def prepare_data(self) -> None:

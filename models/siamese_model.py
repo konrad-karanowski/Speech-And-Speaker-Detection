@@ -1,42 +1,50 @@
 from typing import *
 
 import torch
+import hydra
 from torch import nn
 import numpy as np
 import torch.nn.functional as F
 import pytorch_lightning as pl
 from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
-
-from models.backbones import CustomBackbone
+from torch.optim import Optimizer
 
 
 class SiameseHead(nn.Module):
 
-    def __init__(self, config, size):
+    def __init__(self, in_features: int, final_rep_dim: int):
         super(SiameseHead, self).__init__()
         self.linear = nn.Linear(
-            size, 128
+            in_features, final_rep_dim
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.linear(x)
 
+
 class SiameseModel(pl.LightningModule):
 
-    def __init__(self, config, input_size: Tuple[int, int, int]) -> None:
+    def __init__(self, input_size: int, **kwargs) -> None:
         super(SiameseModel, self).__init__()
-        self.config = config
+        self.save_hyperparameters()
+
         self.criterion_label = nn.TripletMarginLoss()
         self.criterion_speaker = nn.TripletMarginLoss()
-        self.backbone = CustomBackbone(input_size)
-        self.head_label = SiameseHead(config, self.backbone.embedding_size())
-        self.head_speaker = SiameseHead(config, self.backbone.embedding_size())
 
-    def configure_optimizers(self):
+        self.backbone = hydra.utils.instantiate(self.hparams.backbone, input_size=input_size)
+
+        self.head_label = SiameseHead(self.backbone.embedding_size(), self.hparams.final_dim_rep)
+        self.head_speaker = SiameseHead(self.backbone.embedding_size(), self.hparams.final_dim_rep)
+
+
+    def configure_optimizers(self) -> Union[Optimizer, Tuple[Sequence[Optimizer], Sequence[Any]]]:
         params = list(self.backbone.parameters()) + list(self.head_label.parameters()) + list(
             self.head_speaker.parameters())
-        optimizer = torch.optim.Adam(params, lr=1e-4)
-        scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=10)
+
+        optimizer = hydra.utils.instantiate(self.hparams.optimizer, params=params, _convert_="partial")
+        if "lr_scheduler" not in self.hparams:
+            return [optimizer]
+        scheduler = hydra.utils.instantiate(self.hparams.lr_scheduler, optimizer=optimizer)
         return [optimizer], [scheduler]
 
     def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor]:
@@ -44,12 +52,9 @@ class SiameseModel(pl.LightningModule):
         h1, h2 = self.head_label(fe), self.head_speaker(fe)
         return h1, h2
 
-    def _calculate_distances(self, query_repr: torch.Tensor, support_repr: torch.Tensor, p: int = 2) -> torch.Tensor:
-        return torch.cdist(query_repr.unsqueeze(0), support_repr.unsqueeze(0), p=p).squeeze(0)
-
     def predict(self,
                 query: torch.Tensor,
-                support: Optional[torch.Tensor],
+                support: torch.Tensor,
                 ) -> Tuple[torch.Tensor, torch.Tensor]:
         # support is of size [bs, ch, h, w]
         # query is of size [bs, ch, h ,w]
@@ -74,7 +79,7 @@ class SiameseModel(pl.LightningModule):
 
         return label_distances, speaker_distances
 
-    def _inner_step(self, batch) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    def _inner_step(self, batch: Any) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         anchor, pos_label, neg_label, pos_speaker, neg_speaker = batch['anchor'], batch['pos_label'], \
                                                                  batch['neg_label'], batch['pos_speaker'], batch[
                                                                      'neg_speaker']
@@ -91,11 +96,11 @@ class SiameseModel(pl.LightningModule):
         label_loss = self.criterion_label(anchor_lab_rep, pos_lab_rep, neg_lab_rep)
         speaker_loss = self.criterion_speaker(anchor_sp_rep, pos_sp_rep, neg_sp_rep)
 
-        total_loss = self.config.a * label_loss + self.config.b * speaker_loss
+        total_loss = label_loss + speaker_loss
 
         return label_loss, speaker_loss, total_loss
 
-    def training_step(self, batch, batch_idx, *args, **kwargs) -> torch.Tensor:
+    def training_step(self, batch: Any, batch_idx: int, *args, **kwargs) -> torch.Tensor:
         label_loss, speaker_loss, total_loss = self._inner_step(batch)
 
         self.log_dict({
@@ -105,7 +110,7 @@ class SiameseModel(pl.LightningModule):
         })
         return total_loss
 
-    def validation_step(self, batch, batch_idx, *args, **kwargs) -> torch.Tensor:
+    def validation_step(self, batch: Any, batch_idx: int, *args, **kwargs) -> torch.Tensor:
         label_loss, speaker_loss, total_loss = self._inner_step(batch)
 
         self.log_dict({
@@ -115,7 +120,7 @@ class SiameseModel(pl.LightningModule):
         })
         return total_loss
 
-    def test_step(self, batch, batch_idx, *args, **kwargs) -> Dict[str, torch.Tensor]:
+    def test_step(self, batch: Any, batch_idx: int, *args, **kwargs) -> Dict[str, torch.Tensor]:
         anchor = batch['anchor']
         anchor_label = batch['anchor_label']
         anchor_speaker = batch['anchor_speaker']
@@ -143,10 +148,10 @@ class SiameseModel(pl.LightningModule):
 
     def _calculate_metrics(self, role: str, y_true: Iterable[int], y_pred: np.ndarray) -> Dict[str, float]:
         return {
-            f'{role}_accuracy': accuracy_score(y_true, np.where(y_pred < 5, 1, 0)),
-            f'{role}_f1_score': f1_score(y_true, np.where(y_pred < 5, 1, 0)),
-            f'{role}_precision_score': precision_score(y_true, np.where(y_pred < 5, 1, 0)),
-            f'{role}_recall_score': recall_score(y_true, np.where(y_pred < 5, 1, 0)),
+            f'{role}_accuracy': accuracy_score(y_true, np.where(y_pred < 0.5, 1, 0)),
+            f'{role}_f1_score': f1_score(y_true, np.where(y_pred < 0.5, 1, 0)),
+            f'{role}_precision_score': precision_score(y_true, np.where(y_pred < 0.5, 1, 0)),
+            f'{role}_recall_score': recall_score(y_true, np.where(y_pred < 0.5, 1, 0)),
         }
 
     def test_epoch_end(self, outputs: Iterable[Dict[str, torch.Tensor]]) -> None:
@@ -160,7 +165,7 @@ class SiameseModel(pl.LightningModule):
             speaker_trues.extend(output['speaker_target'])
             label_preds.extend(output['label_distances'])
             speaker_preds.extend(output['speaker_distances'])
-        label_dict = self._calculate_metrics('label', label_trues, np.array(label_preds))
-        speaker_dict = self._calculate_metrics('speaker', speaker_trues, np.array(speaker_preds))
+        label_dict = self._calculate_metrics('label', label_trues, np.array(F.sigmoid(torch.tensor(label_preds))))
+        speaker_dict = self._calculate_metrics('speaker', speaker_trues, np.array(F.sigmoid(torch.tensor(speaker_preds))))
         self.log_dict(label_dict)
         self.log_dict(speaker_dict)

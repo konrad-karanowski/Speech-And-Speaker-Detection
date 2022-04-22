@@ -1,0 +1,22 @@
+module:
+
+  _target_: models.siamese_model.SiameseModel
+
+  final_dim_rep: 128
+
+  optimizer:
+    _target_: torch.optim.Adam
+    lr: 1e-4
+    betas: [0.9, 0.999]
+    eps: 1e-08
+    weight_decay: 0
+
+  lr_scheduler:
+    _target_: torch.optim.lr_scheduler.CosineAnnealingLR
+    T_max: 10
+    eta_min: 1e-8 # min value for the lr
+    last_epoch: -1
+    verbose: False
+
+  backbone:
+    _target_: models.backbones.backbone.CustomBackbone

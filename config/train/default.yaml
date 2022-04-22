@@ -1,0 +1,41 @@
+trainer:
+  gpus: -1
+  min_epochs: 0
+  max_epochs: 1
+
+monitor:
+  metric: 'val_total_loss'
+  mode: 'min'
+
+callbacks:
+
+  - _target_: pytorch_lightning.callbacks.EarlyStopping
+    patience: 10
+    verbose: False
+    monitor: ${train.monitor.metric}
+    mode: ${train.monitor.mode}
+
+  - _target_: pytorch_lightning.callbacks.ModelCheckpoint
+    save_top_k: 1
+    verbose: False
+    monitor: ${train.monitor.metric}
+    mode: ${train.monitor.mode}
+  
+  - _target_: pytorch_lightning.callbacks.progress.tqdm_progress.TQDMProgressBar
+    refresh_rate: 1
+
+  - _target_: pytorch_lightning.callbacks.LearningRateMonitor
+    logging_interval: "step"
+    log_momentum: False
+
+  - _target_: callbacks.save_predictions.SaveOutputsWandb
+    save_name: 'outputs.csv'
+
+logger:
+  _target_: pytorch_lightning.loggers.WandbLogger
+
+  project: ${core.project_name}
+  entity: 'kn-bmi'
+  log_model: False
+  mode: 'online'
+  save_dir: ${core.storage_dir}
