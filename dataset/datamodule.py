@@ -6,13 +6,13 @@ import pytorch_lightning as pl
 import pandas as pd
 import tqdm
 import librosa
-import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.model_selection import train_test_split
 from torch.utils.data import DataLoader
 
 from dataset.transforms import default_transform
 from dataset.triplet_dataset import TripletDataset
+from dataset.classification_dataset import ClassificationDataset
 from utils import create_df, get_classes, create_spectrogram, create_mel_spectrogram, preprocess_signal
 
 
@@ -41,6 +41,16 @@ class SpeechDataModule(pl.LightningDataModule):
             classes=get_classes(img_dir),
             path=img_dir
         )
+
+    @property
+    def input_size(self) -> Tuple[int, int, int]:
+        if self.data is None:
+            raise ValueError('There is no data in this datamodule. Call .prepare_data() first!')
+        sample_shape = np.load(self.data.iloc[0]['path']).shape
+        if len(sample_shape) == 2:
+            return 1, sample_shape[0], sample_shape[1]
+        return sample_shape
+
 
     def _maybe_download_data(self, data_dir: str) -> None:
         # TODO, do this 
@@ -82,7 +92,8 @@ class SpeechDataModule(pl.LightningDataModule):
                     sr=sr,
                     frame_size=self.config.frame_size,
                     hop_size=self.config.hop_size,
-                    window_function=self.config.window_function
+                    window_function=self.config.window_function,
+                    num_mels=self.config.num_mels
                 )
                 new_path = path.replace(self.config.data_dir, self.config.img_dir).replace('.wav', '.npy')
                 np.save(new_path, spectrogram)
@@ -93,8 +104,8 @@ class SpeechDataModule(pl.LightningDataModule):
     def setup(self) -> None:
         """Setup data for experiment
         """
-        train_df, remain = train_test_split(self.data, test_size=0.95, random_state=1, stratify=self.data['label'])
-        val_df, test_df = train_test_split(remain, test_size=0.95, random_state=1, stratify=remain['label'])
+        train_df, remain = train_test_split(self.data, train_size=self.config.train_vs_rest_size, random_state=1, stratify=self.data['label'])
+        val_df, test_df = train_test_split(remain, train_size=self.config.val_vs_test_size, random_state=1, stratify=remain['label'])
 
         train_df['split'] = 'train'
         val_df['split'] = 'val'
@@ -109,16 +120,16 @@ class SpeechDataModule(pl.LightningDataModule):
             batch_size=self.config.batch_size
         )
 
-    def test_dataloader(self) -> DataLoader:
+    def val_dataloader(self) -> DataLoader:
         return DataLoader(
             TripletDataset(self.data[self.data['split'] == 'val'], transforms=default_transform()),
             shuffle=False,
             batch_size=self.config.batch_size
         )
 
-    def val_dataloader(self) -> DataLoader:
+    def test_dataloader(self) -> DataLoader:
         return DataLoader(
-            TripletDataset(self.data[self.data['split'] == 'test'], transforms=default_transform()),
+            ClassificationDataset(self.data[self.data['split'] == 'test'], transforms=default_transform()),
             shuffle=False,
             batch_size=self.config.batch_size
         )
