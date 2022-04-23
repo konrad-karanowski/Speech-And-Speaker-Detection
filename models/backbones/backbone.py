@@ -29,14 +29,17 @@ class CustomBackbone(Backbone):
         super(CustomBackbone, self).__init__(input_size)
         self.fe = nn.Sequential(
             nn.Conv2d(1, 16, (3, 3)),
+            nn.BatchNorm2d(16),
             nn.MaxPool2d(3),
-            nn.ReLU(),
+            nn.GELU(),
             nn.Conv2d(16, 32, (3, 3)),
+            nn.BatchNorm2d(32),
             nn.MaxPool2d(3),
-            nn.ReLU(),
+            nn.GELU(),
             nn.Conv2d(32, 64, (3, 3)),
+            nn.BatchNorm2d(64),
             nn.MaxPool2d(3),
-            nn.ReLU()
+            nn.GELU()
         )
         self.flatten = nn.Flatten()
 

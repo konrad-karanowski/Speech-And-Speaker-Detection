@@ -70,7 +70,7 @@ class SiameseModel(pl.LightningModule):
         query_label_repr = label_repr[:bs]
         support_label_repr = label_repr[bs:]
 
-        speaker_repr = self.head_label(embedding)
+        speaker_repr = self.head_speaker(embedding)
         query_speaker_repr = speaker_repr[:bs]
         support_speaker_repr = speaker_repr[bs:]
 
@@ -165,7 +165,7 @@ class SiameseModel(pl.LightningModule):
             speaker_trues.extend(output['speaker_target'])
             label_preds.extend(output['label_distances'])
             speaker_preds.extend(output['speaker_distances'])
-        label_dict = self._calculate_metrics('label', label_trues, np.array(F.sigmoid(torch.tensor(label_preds))))
-        speaker_dict = self._calculate_metrics('speaker', speaker_trues, np.array(F.sigmoid(torch.tensor(speaker_preds))))
-        self.log_dict(label_dict)
-        self.log_dict(speaker_dict)
+        # label_dict = self._calculate_metrics('label', label_trues, np.array(label_preds))
+        # speaker_dict = self._calculate_metrics('speaker', speaker_trues, np.array(speaker_preds))
+        # self.log_dict(label_dict)
+        # self.log_dict(speaker_dict)

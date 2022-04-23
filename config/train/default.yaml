@@ -1,7 +1,7 @@
 trainer:
   gpus: -1
   min_epochs: 0
-  max_epochs: 1
+  max_epochs: 10000
 
 monitor:
   metric: 'val_total_loss'
@@ -10,7 +10,7 @@ monitor:
 callbacks:
 
   - _target_: pytorch_lightning.callbacks.EarlyStopping
-    patience: 10
+    patience: 3
     verbose: False
     monitor: ${train.monitor.metric}
     mode: ${train.monitor.mode}
