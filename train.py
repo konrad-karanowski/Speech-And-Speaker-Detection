@@ -4,6 +4,7 @@ from typing import *
 import hydra
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import Callback
+from omegaconf import OmegaConf
 
 from common import PROJECT_ROOT
 
@@ -28,8 +29,6 @@ def build_callbacks(cfg: Any, *args: Callback) -> List[Callback]:
 
 @hydra.main(config_path=str(PROJECT_ROOT / 'config'), config_name='default')
 def main(config):
-    import os
-    print(os.path.abspath(os.path.curdir))
     datamodule = hydra.utils.instantiate(config.datamodule.datamodule, _recursive_=False)
     datamodule.prepare_data()
     datamodule.setup()
