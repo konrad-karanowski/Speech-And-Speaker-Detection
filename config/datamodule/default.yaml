@@ -22,4 +22,4 @@ datamodule:
     # datasets specs
     train_vs_rest_size: 0.8
     val_vs_test_size: 0.4
-    batch_size: 32
+    batch_size: 24
