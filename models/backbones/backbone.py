@@ -23,6 +23,22 @@ class Backbone(nn.Module):
         raise NotImplementedError
 
 
+class SelfAttentionPooling(nn.Module):
+    """
+    https://arxiv.org/pdf/2008.01077v1.pdf
+    """
+    def __init__(self, input_dim):
+        super(SelfAttentionPooling, self).__init__()
+        self.W = nn.Linear(input_dim, 1)
+        
+    def forward(self, batch_rep: torch.Tensor) -> torch.Tensor:
+        softmax = nn.functional.softmax
+        att_w = softmax(self.W(batch_rep).squeeze(-1)).unsqueeze(-1)
+        utter_rep = torch.sum(batch_rep * att_w, dim=1)
+
+        return utter_rep
+
+
 class CustomBackbone(Backbone):
 
     def __init__(self, input_size: Tuple[int, int, int]) -> None:
@@ -49,6 +65,7 @@ class CustomBackbone(Backbone):
         return flatt
 
 
+
 class CatalunaBackbone(Backbone):
 
     def __init__(self, input_size: Tuple[int, int, int]) -> None:
@@ -68,11 +85,9 @@ class CatalunaBackbone(Backbone):
             nn.GELU(),
             nn.MaxPool2d(2, 2)
         )
-        self.flatten = nn.Flatten()
+        self.sap = SelfAttentionPooling()
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         fe = self.fe(x)
-        flatt = self.flatten(fe)
+        flatt = self.sap(fe)
         return flatt
-
-
