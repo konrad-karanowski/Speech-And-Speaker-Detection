@@ -1,12 +1,13 @@
 from typing import *
 
-import torch
 import hydra
-from torch import nn
+import torch
 import numpy as np
-import torch.nn.functional as F
 import pytorch_lightning as pl
-from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
+import torch.nn.functional as F
+from sklearn.metrics import (accuracy_score, f1_score, precision_score,
+                             recall_score)
+from torch import nn
 from torch.optim import Optimizer
 
 
@@ -35,7 +36,6 @@ class SiameseModel(pl.LightningModule):
 
         self.head_label = SiameseHead(self.backbone.embedding_size(), self.hparams.final_dim_rep)
         self.head_speaker = SiameseHead(self.backbone.embedding_size(), self.hparams.final_dim_rep)
-
 
     def configure_optimizers(self) -> Union[Optimizer, Tuple[Sequence[Optimizer], Sequence[Any]]]:
         params = list(self.backbone.parameters()) + list(self.head_label.parameters()) + list(

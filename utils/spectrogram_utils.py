@@ -82,6 +82,36 @@ def create_mel_spectrogram(
     return spectrogram
 
 
+def create_mfcc_spectrogram(
+    audio: np.ndarray,
+    sr: int,
+    frame_size: int,
+    hop_size: int,
+    window_function: str = 'hann',
+    num_mels: int = 128,
+    num_mfccs: int = 39,
+    dct_type: int = 2,
+    ref: Optional[Callable] = None,
+    *args,
+    **kwargs) -> np.ndarray:
+    mfcc = librosa.feature.mfcc(
+        y=audio,
+        sr=sr,
+        n_fft=frame_size,
+        hop_length=hop_size,
+        window=window_function,
+        center=False,
+        n_mels=num_mels,
+        n_mfcc=num_mfccs,
+        dct_type=dct_type
+    )
+    if ref is not None:
+        spectrogram = librosa.power_to_db(mfcc, ref=ref)
+    else:
+        spectrogram = librosa.power_to_db(mfcc)
+    return spectrogram
+
+
 def _maybe_resample_signal(
         signal: np.ndarray,
         sr: int,

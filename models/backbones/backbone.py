@@ -29,7 +29,7 @@ class SelfAttentionPooling(nn.Module):
     """
     def __init__(self, input_dim):
         super(SelfAttentionPooling, self).__init__()
-        self.W = nn.Linear(input_dim, 1)
+        self.W = nn.Linear(input_dim, 16)
         
     def forward(self, batch_rep: torch.Tensor) -> torch.Tensor:
         softmax = nn.functional.softmax
@@ -65,29 +65,34 @@ class CustomBackbone(Backbone):
         return flatt
 
 
-
 class CatalunaBackbone(Backbone):
 
     def __init__(self, input_size: Tuple[int, int, int]) -> None:
         super(CatalunaBackbone, self).__init__(input_size)
         self.fe = nn.Sequential(
             nn.Conv2d(1, 128, (3, 3), (1, 1)),
+            nn.BatchNorm2d(128),
             nn.GELU(),
             nn.Conv2d(128, 128, (3, 3), (1, 1)),
+            nn.BatchNorm2d(128),
             nn.GELU(),
             nn.MaxPool2d(2, 2),
             nn.Conv2d(128, 256, (3, 3), (1, 1)),
+            nn.BatchNorm2d(256),
             nn.GELU(),
             nn.MaxPool2d(2, 2),
             nn.Conv2d(256, 512, (3, 3), (1, 1)),
+            nn.BatchNorm2d(512),
             nn.GELU(),
             nn.Conv2d(512, 512, (3, 3), (1, 1)),
+            nn.BatchNorm2d(512),
             nn.GELU(),
             nn.MaxPool2d(2, 2)
         )
-        self.sap = SelfAttentionPooling()
+        # self.sap = SelfAttentionPooling(16)
+        self.flatten = nn.Flatten()
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         fe = self.fe(x)
-        flatt = self.sap(fe)
+        flatt = self.flatten(fe)
         return flatt
