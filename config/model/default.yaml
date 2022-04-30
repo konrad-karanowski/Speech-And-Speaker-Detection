@@ -20,3 +20,6 @@ module:
 
   backbone:
     _target_: models.backbones.backbone.CatalunaBackbone
+
+  process_audio_method: ${datamodule.datamodule.process_audio_method}
+  spectrogram_method: ${datamodule.datamodule.spectrogram_method}
