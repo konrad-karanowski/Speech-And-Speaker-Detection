@@ -11,8 +11,7 @@ import tqdm
 from sklearn.model_selection import train_test_split
 from torch.utils.data import DataLoader
 
-from utils import (create_df, create_mel_spectrogram, create_spectrogram,
-                   get_classes, preprocess_signal)
+from utils import create_df, get_classes
 from datamodules.classification_dataset import ClassificationDataset
 from datamodules.transforms import default_transform
 from datamodules.triplet_dataset import TripletDataset
@@ -53,7 +52,6 @@ class SpeechDataModule(pl.LightningDataModule):
             return 1, sample_shape[0], sample_shape[1]
         return sample_shape
 
-
     def _maybe_download_data(self, data_dir: str) -> None:
         # TODO, do this 
         if os.path.exists(data_dir):
@@ -78,17 +76,15 @@ class SpeechDataModule(pl.LightningDataModule):
             for cls in classes:
                 os.makedirs(os.path.join(img_dir, cls), exist_ok=True)
 
+            preprocess_method = hydra.utils.instantiate(self.hparams.process_audio_method, _partial_=True)
             spectogram_method = hydra.utils.instantiate(self.hparams.spectrogram_method, _partial_=True)
 
             for _, item in tqdm.tqdm(df.iterrows(), total=len(df), desc='Create spectrogram from wav files...'):
                 path = item['path']
                 audio, sr = librosa.load(path)
-                processed_audio = preprocess_signal(
+                processed_audio = preprocess_method(
                     signal=audio,
                     sr=sr,
-                    target_sr=self.hparams.target_sr,
-                    target_num_samples=self.hparams.target_num_samples,
-                    res_type=self.hparams.res_type
                 )
                 spectrogram = spectogram_method(audio=processed_audio, sr=sr)
                 new_path = path.replace(self.hparams.data_dir, self.hparams.img_dir).replace('.wav', '.npy')
@@ -100,8 +96,10 @@ class SpeechDataModule(pl.LightningDataModule):
     def setup(self) -> None:
         """Setup data for experiment
         """
-        train_df, remain = train_test_split(self.data, train_size=self.hparams.train_vs_rest_size, random_state=1, stratify=self.data['label'])
-        val_df, test_df = train_test_split(remain, train_size=self.hparams.val_vs_test_size, random_state=1, stratify=remain['label'])
+        train_df, remain = train_test_split(self.data, train_size=self.hparams.train_vs_rest_size, random_state=1,
+                                            stratify=self.data['label'])
+        val_df, test_df = train_test_split(remain, train_size=self.hparams.val_vs_test_size, random_state=1,
+                                           stratify=remain['label'])
 
         train_df['split'] = 'train'
         val_df['split'] = 'val'
