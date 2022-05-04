@@ -7,11 +7,12 @@ from torch import nn
 
 class Backbone(nn.Module):
 
-    """
-    Base interface for backbone, allowing dynamic embedding's size checking 
-    """
-
     def __init__(self, input_size: Tuple[int, int, int]) -> None:
+        """Base interface for backbone, allowing dynamic embedding's size checking 
+
+        Args:
+            input_size (Tuple[int, int, int]): Input spectrogram shape.
+        """
         super(Backbone, self).__init__()
         self.input_size = input_size
         self.embedding_dim_size = None

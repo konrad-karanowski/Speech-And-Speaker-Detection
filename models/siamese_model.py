@@ -13,6 +13,12 @@ from torch.optim import Optimizer
 class SiameseHead(nn.Module):
 
     def __init__(self, in_features: int, final_rep_dim: int):
+        """Base "head" for siamese model. Transforms backbone's output into specific vector. Responsible for one dimension (speaker, label).
+
+        Args:
+            in_features (int): Embedding size form backbone.
+            final_rep_dim (int): Final vector size. 
+        """
         super(SiameseHead, self).__init__()
         self.linear = nn.Linear(
             in_features, final_rep_dim
@@ -25,6 +31,11 @@ class SiameseHead(nn.Module):
 class SiameseModel(pl.LightningModule):
 
     def __init__(self, input_size: int, **kwargs) -> None:
+        """Multi-Head Siamese model for pre-training. Learns acoustic embeddings of word and speaker.
+
+        Args:
+            input_size (int): Backbone input size.
+        """
         super(SiameseModel, self).__init__()
         self.save_hyperparameters()
 
@@ -41,6 +52,11 @@ class SiameseModel(pl.LightningModule):
         self.spectogram_method = hydra.utils.instantiate(self.hparams.spectrogram_method, _partial_=True)
 
     def configure_optimizers(self) -> Union[Sequence[Optimizer], Tuple[Sequence[Optimizer], Sequence[Any]]]:
+        """Configure optimizer and lr scheduler.
+
+        Returns:
+            Union[Sequence[Optimizer], Tuple[Sequence[Optimizer], Sequence[Any]]]: Optimizer or optimizer and lr scheduler.
+        """
         params = list(self.backbone.parameters()) + list(self.head_label.parameters()) + list(
             self.head_speaker.parameters())
 
@@ -53,59 +69,75 @@ class SiameseModel(pl.LightningModule):
         return [optimizer], [scheduler]
 
     def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+        """Base torch interface for model forward-propagation.
+
+        Args:
+            x (torch.Tensor): Input for the model.
+
+        Returns:
+            Tuple[torch.Tensor, torch.Tensor]: Label embedding and speaker embedding.
+        """
         fe = self.backbone(x)
-        h1, h2 = self.head_label(fe), self.head_speaker(fe)
-        return h1, h2
+        label_embedding, speaker_embedding = self.head_label(fe), self.head_speaker(fe)
+        return label_embedding, speaker_embedding
 
-    def _predict(self,
-                 query: torch.Tensor,
-                 support: torch.Tensor,
-                 ) -> Tuple[torch.Tensor, torch.Tensor]:
+    # def _predict(self,
+    #              query: torch.Tensor,
+    #              support: torch.Tensor,
+    #              ) -> Tuple[torch.Tensor, torch.Tensor]:
         
-        with torch.no_grad():
-            bs, _, _, _ = support.shape
-            bs, _, _, _ = query.shape
+    #     with torch.no_grad():
+    #         bs, _, _, _ = support.shape
+    #         bs, _, _, _ = query.shape
 
-            # concat
-            samples = torch.cat([query, support])
-            # pass through backbone
-            embedding = self.backbone(samples)
+    #         # concat
+    #         samples = torch.cat([query, support])
+    #         # pass through backbone
+    #         embedding = self.backbone(samples)
 
-            label_repr = self.head_label(embedding)
-            query_label_repr = label_repr[:bs]
-            support_label_repr = label_repr[bs:]
+    #         label_repr = self.head_label(embedding)
+    #         query_label_repr = label_repr[:bs]
+    #         support_label_repr = label_repr[bs:]
 
-            speaker_repr = self.head_speaker(embedding)
-            query_speaker_repr = speaker_repr[:bs]
-            support_speaker_repr = speaker_repr[bs:]
+    #         speaker_repr = self.head_speaker(embedding)
+    #         query_speaker_repr = speaker_repr[:bs]
+    #         support_speaker_repr = speaker_repr[bs:]
 
-            label_distances = F.pairwise_distance(query_label_repr, support_label_repr)
-            speaker_distances = F.pairwise_distance(query_speaker_repr, support_speaker_repr)
+    #         label_distances = F.pairwise_distance(query_label_repr, support_label_repr)
+    #         speaker_distances = F.pairwise_distance(query_speaker_repr, support_speaker_repr)
 
-            return label_distances, speaker_distances
+    #         return label_distances, speaker_distances
 
-    def _process_audio(self, audio: np.ndarray, sr: int) -> torch.Tensor:
-        signal = self.preprocess_method(audio, sr)
-        spectrogram = self.spectogram_method(signal, self.hparams.process_audio_method.target_sr)
-        spectrogram = torch.tensor(spectrogram)[None, None, :, :]
-        return spectrogram
+    # def _process_audio(self, audio: np.ndarray, sr: int) -> torch.Tensor:
+    #     signal = self.preprocess_method(audio, sr)
+    #     spectrogram = self.spectogram_method(signal, self.hparams.process_audio_method.target_sr)
+    #     spectrogram = torch.tensor(spectrogram)[None, None, :, :]
+    #     return spectrogram
 
-    def predict(self,
-                query_samples: List[Tuple[np.ndarray, int]],
-                support_sample: Tuple[np.ndarray, int]
-                ) -> Dict[str, np.ndarray]:
-        query = torch.cat([self._process_audio(*sample) for sample in query_samples]).float()
-        support = self._process_audio(*support_sample).repeat(len(query_samples), 1, 1, 1).float()
+    # def predict(self,
+    #             query_samples: List[Tuple[np.ndarray, int]],
+    #             support_sample: Tuple[np.ndarray, int]
+    #             ) -> Dict[str, np.ndarray]:
+    #     query = torch.cat([self._process_audio(*sample) for sample in query_samples]).float()
+    #     support = self._process_audio(*support_sample).repeat(len(query_samples), 1, 1, 1).float()
 
-        assert support.shape == query.shape, \
-            f'Support and query should be same size but got: {support.shape} and {query.shape}'
-        label_distances, speaker_distances = self._predict(query, support)
-        return {
-            'label_distances': label_distances.cpu().numpy().tolist(),
-            'speaker_distances': speaker_distances.cpu().numpy().tolist(),
-        }
+    #     assert support.shape == query.shape, \
+    #         f'Support and query should be same size but got: {support.shape} and {query.shape}'
+    #     label_distances, speaker_distances = self._predict(query, support)
+    #     return {
+    #         'label_distances': label_distances.cpu().numpy().tolist(),
+    #         'speaker_distances': speaker_distances.cpu().numpy().tolist(),
+    #     }
 
-    def _inner_step(self, batch: Any) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    def _inner_step(self, batch: Dict[str, Any]) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """Inner step of calculating embeddings of speaker and label.
+
+        Args:
+            batch (Any): Input data including anchor, positive and negative samples across all dimensions (label, speaker).
+
+        Returns:
+            Tuple[torch.Tensor, torch.Tensor, torch.Tensor]: Label triplet margin loss, speaker triplet margin loss and total loss (sum).
+        """
         anchor, pos_label, neg_label, pos_speaker, neg_speaker = batch['anchor'], batch['pos_label'], \
                                                                  batch['neg_label'], batch['pos_speaker'], batch[
                                                                      'neg_speaker']
@@ -126,7 +158,15 @@ class SiameseModel(pl.LightningModule):
 
         return label_loss, speaker_loss, total_loss
 
-    def training_step(self, batch: Any, batch_idx: int, *args, **kwargs) -> torch.Tensor:
+    def training_step(self, batch: Any, *args, **kwargs) -> torch.Tensor:
+        """Base PyTorchLightning step for training process.
+
+        Args:
+            batch (Any): Sample of training data.
+
+        Returns:
+            torch.Tensor: Training loss.
+        """
         label_loss, speaker_loss, total_loss = self._inner_step(batch)
 
         self.log_dict({
@@ -136,7 +176,15 @@ class SiameseModel(pl.LightningModule):
         })
         return total_loss
 
-    def validation_step(self, batch: Any, batch_idx: int, *args, **kwargs) -> torch.Tensor:
+    def validation_step(self, batch: Any, *args, **kwargs) -> torch.Tensor:
+        """Base PyTorchLightning step for validation process.
+
+        Args:
+            batch (Any): Sample of validation data.
+
+        Returns:
+            torch.Tensor: Validation loss.
+        """
         label_loss, speaker_loss, total_loss = self._inner_step(batch)
 
         self.log_dict({
@@ -146,7 +194,15 @@ class SiameseModel(pl.LightningModule):
         })
         return total_loss
 
-    def test_step(self, batch: Any, batch_idx: int, *args, **kwargs) -> Dict[str, torch.Tensor]:
+    def test_step(self, batch: Any, *args, **kwargs) -> Dict[str, torch.Tensor]:
+        """Base PyTorchLightning step for testing process.
+
+        Args:
+            batch (Any): Sample of test data.
+
+        Returns:
+            torch.Tensor: Dict with testing data distances and targets.
+        """
         anchor = batch['anchor']
         anchor_label = batch['anchor_label']
         anchor_speaker = batch['anchor_speaker']
@@ -172,14 +228,3 @@ class SiameseModel(pl.LightningModule):
             'speaker_target': speaker_target.cpu()
         }
 
-    def test_epoch_end(self, outputs: Iterable[Dict[str, torch.Tensor]]) -> None:
-
-        label_trues = []
-        speaker_trues = []
-        label_preds = []
-        speaker_preds = []
-        for output in outputs:
-            label_trues.extend(output['label_target'])
-            speaker_trues.extend(output['speaker_target'])
-            label_preds.extend(output['label_distances'])
-            speaker_preds.extend(output['speaker_distances'])

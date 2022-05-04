@@ -7,11 +7,12 @@ from models.backbones.backbone import Backbone
 
 class WidthCrossBackbone(Backbone):
 
-    """
-    Smaller backbone treating different dimensions in separate way.
-    """
-
     def __init__(self, input_size: Tuple[int, int, int]) -> None:
+        """Smaller backbone treating different dimensions in separate way.
+
+        Args:
+            input_size (Tuple[int, int, int]): Backbone inspired by PAC paper
+        """
         super(WidthCrossBackbone, self).__init__(input_size)
 
         self.fe = nn.Sequential(

@@ -6,11 +6,13 @@ from torch import nn
 from models.backbones.backbone import Backbone
 
 class CatalunaBackbone(Backbone):
-    """
-    Backbone inspired by PAC paper
-    """
 
     def __init__(self, input_size: Tuple[int, int, int]) -> None:
+        """Backbone inspired by PAC paper
+
+        Args:
+            input_size (Tuple[int, int, int]): Input spectrogram shape.
+        """
         super(CatalunaBackbone, self).__init__(input_size)
         self.fe = nn.Sequential(
             nn.Conv2d(1, 128, (3, 3), (1, 1)),
