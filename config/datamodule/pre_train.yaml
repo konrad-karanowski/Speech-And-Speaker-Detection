@@ -1,6 +1,6 @@
 datamodule:
 
-  _target_: datamodules.datamodule.SpeechDataModule
+  _target_: datamodules.datamodule.SiameseSpeechDatamodule
 
   process_audio_method:
     _target_: utils.spectrogram_utils.preprocess_signal
@@ -10,8 +10,7 @@ datamodule:
     res_type: 'kaiser_best'
 
   spectrogram_method:
-    _target_: utils.spectrogram_utils.create_mel_spectrogram
-    #_target_: utils.spectrogram_utils.create_mfcc_spectrogram
+    _target_: utils.spectrogram_utils.create_mfcc_spectrogram
     # params
     frame_size: 2048 
     hop_size: 128
@@ -20,11 +19,13 @@ datamodule:
     num_mfccs: 39
 
   # data paths
-  root: 'C:/Users/Konrad/Desktop/PythonProjects/Speech-And-Speaker-Detection/data'#'/home/konradkaranowski/storage'
-  data_dir: 'archive' #'speech'
-  img_dir: 'mel_spectrogram' #'mfcc_spectrograms_22050'
+  root: '/home/konradkaranowski/storage'
+  data_dir: 'speech'
+  img_dir: 'mfcc_spectrograms_22050'
 
   # datasets specs
   train_vs_rest_size: 0.8
   val_vs_test_size: 0.4
-  batch_size: 5
+  batch_size: 32
+
+  keep_proper_classes: True

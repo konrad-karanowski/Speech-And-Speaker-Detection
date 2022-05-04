@@ -40,7 +40,7 @@ class SiameseModel(pl.LightningModule):
         self.preprocess_method = hydra.utils.instantiate(self.hparams.process_audio_method, _partial_=True)
         self.spectogram_method = hydra.utils.instantiate(self.hparams.spectrogram_method, _partial_=True)
 
-    def configure_optimizers(self) -> [Union[Sequence[Optimizer], Tuple[Sequence[Optimizer], Sequence[Any]]]]:
+    def configure_optimizers(self) -> Union[Sequence[Optimizer], Tuple[Sequence[Optimizer], Sequence[Any]]]:
         params = list(self.backbone.parameters()) + list(self.head_label.parameters()) + list(
             self.head_speaker.parameters())
 
@@ -48,6 +48,8 @@ class SiameseModel(pl.LightningModule):
         if "lr_scheduler" not in self.hparams:
             return [optimizer]
         scheduler = hydra.utils.instantiate(self.hparams.lr_scheduler, optimizer=optimizer)
+        if isinstance(scheduler, torch.optim.lr_scheduler.ReduceLROnPlateau):
+            return {'optimizer': optimizer, 'lr_scheduler': scheduler, 'monitor': self.hparams.monitor}
         return [optimizer], [scheduler]
 
     def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
@@ -59,8 +61,7 @@ class SiameseModel(pl.LightningModule):
                  query: torch.Tensor,
                  support: torch.Tensor,
                  ) -> Tuple[torch.Tensor, torch.Tensor]:
-        # support is of size [bs, ch, h, w]
-        # query is of size [bs, ch, h ,w]
+        
         with torch.no_grad():
             bs, _, _, _ = support.shape
             bs, _, _, _ = query.shape

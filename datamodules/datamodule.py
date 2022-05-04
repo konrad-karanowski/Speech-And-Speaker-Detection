@@ -1,3 +1,4 @@
+import abc
 import os
 import shutil
 from typing import *
@@ -12,15 +13,30 @@ from sklearn.model_selection import train_test_split
 from torch.utils.data import DataLoader
 
 from utils import create_df, get_classes
-from datamodules.classification_dataset import ClassificationDataset
+from datamodules.evaluate_siamese_dataset import EvaluateSiameseModelDataset
 from datamodules.transforms import default_transform
 from datamodules.triplet_dataset import TripletDataset
+from datamodules.classification_dataset import ClassificationDataset
 
 
-class SpeechDataModule(pl.LightningDataModule):
+class BaseSpeechDataModule(pl.LightningDataModule):
+
+    PROPER_CLASSES = [
+        'zero',
+        'one',
+        'two',
+        'three',
+        'four',
+        'five',
+        'six',
+        'seven',
+        'eight',
+        'nine',
+        'other'
+    ]
 
     def __init__(self, **kwargs):
-        super(SpeechDataModule, self).__init__()
+        super(BaseSpeechDataModule, self).__init__()
         self.save_hyperparameters()
         self.data = None
 
@@ -42,6 +58,11 @@ class SpeechDataModule(pl.LightningDataModule):
             classes=get_classes(img_dir),
             path=img_dir
         )
+        if self.hparams.keep_proper_classes:
+            self._keep_only_propper()
+
+    def _keep_only_propper(self) -> None:
+        self.data['label'] = np.where(self.data['label'].isin(self.PROPER_CLASSES), self.data['label'], 'other')
 
     @property
     def input_size(self) -> Tuple[int, int, int]:
@@ -107,6 +128,24 @@ class SpeechDataModule(pl.LightningDataModule):
 
         self.data = pd.concat([train_df, val_df, test_df], ignore_index=True)
 
+    @abc.abstractmethod
+    def train_dataloader(self) -> DataLoader:
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def val_dataloader(self) -> DataLoader:
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def test_dataloader(self) -> DataLoader:
+        raise NotImplementedError
+
+
+class SiameseSpeechDatamodule(BaseSpeechDataModule):
+
+    def __init__(self, **kwargs):
+        super(SiameseSpeechDatamodule, self).__init__(**kwargs)
+
     def train_dataloader(self) -> DataLoader:
         return DataLoader(
             TripletDataset(self.data[self.data['split'] == 'train'], transforms=default_transform()),
@@ -123,7 +162,40 @@ class SpeechDataModule(pl.LightningDataModule):
 
     def test_dataloader(self) -> DataLoader:
         return DataLoader(
+            EvaluateSiameseModelDataset(self.data[self.data['split'] == 'test'], transforms=default_transform()),
+            shuffle=False,
+            batch_size=self.hparams.batch_size
+        )
+
+
+class FineTuneSpeechDatamodule(BaseSpeechDataModule):
+
+    def __init__(self, **kwargs):
+        super(FineTuneSpeechDatamodule, self).__init__(**kwargs)
+
+    def setup(self) -> None:
+        super(FineTuneSpeechDatamodule, self).setup()
+        self.data['label'] = np.where(self.data['label'] == self.hparams.target_label, 1, 0)
+        self.data['speaker_id'] = np.where(self.data['speaker_id'] == self.hparams.target_speaker, 1, 0)
+
+    def train_dataloader(self) -> DataLoader:
+        return DataLoader(
+            ClassificationDataset(self.data[self.data['split'] == 'train'], transforms=default_transform()),
+            shuffle=True,
+            batch_size=self.hparams.batch_size
+        )
+
+    def val_dataloader(self) -> DataLoader:
+        return DataLoader(
+            ClassificationDataset(self.data[self.data['split'] == 'val'], transforms=default_transform()),
+            shuffle=False,
+            batch_size=self.hparams.batch_size
+        )
+
+    def test_dataloader(self) -> DataLoader:
+        return DataLoader(
             ClassificationDataset(self.data[self.data['split'] == 'test'], transforms=default_transform()),
             shuffle=False,
             batch_size=self.hparams.batch_size
         )
+    

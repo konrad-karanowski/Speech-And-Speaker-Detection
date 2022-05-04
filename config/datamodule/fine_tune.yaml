@@ -1,0 +1,34 @@
+datamodule:
+
+  _target_: datamodules.datamodule.FineTuneSpeechDatamodule
+
+  process_audio_method:
+    _target_: utils.spectrogram_utils.preprocess_signal
+      # params
+    target_sr: 22050
+    target_num_samples: 22050
+    res_type: 'kaiser_best'
+
+  spectrogram_method:
+    _target_: utils.spectrogram_utils.create_mfcc_spectrogram
+    # params
+    frame_size: 2048 
+    hop_size: 128
+    window_function: 'hann'
+    num_mels: 128
+    num_mfccs: 39
+
+  # data paths
+  root: '/home/konradkaranowski/storage'
+  data_dir: 'data-2'
+  img_dir: 'mfcc_spectrograms_ft'
+
+  # datasets specs
+  train_vs_rest_size: 0.8
+  val_vs_test_size: 0.4
+  batch_size: 32
+
+  keep_proper_classes: False
+
+  target_speaker: 'konrad'
+  target_label: 'dog'

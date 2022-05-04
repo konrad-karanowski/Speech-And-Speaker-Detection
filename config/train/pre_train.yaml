@@ -1,7 +1,7 @@
 trainer:
   gpus: -1
   min_epochs: 0
-  max_epochs: 1
+  max_epochs: 10000
 
 monitor:
   metric: 'val_total_loss'
@@ -34,8 +34,8 @@ callbacks:
 logger:
   _target_: pytorch_lightning.loggers.WandbLogger
 
-  project: ${core.project_name}
-  entity: 'kn-bmi'
+  project: ${core.project_name} 
+  entity: 'konrad-karanowski'
   log_model: False
   mode: 'online'
   save_dir: ${core.storage_dir}
