@@ -32,7 +32,6 @@ class CatalunaBackbone(Backbone):
             nn.GELU(),
             nn.MaxPool2d(kernel_size=(2, 2))
         )
-        # self.sap = SelfAttentionPooling(16)
         self.flatten = nn.Flatten()
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:

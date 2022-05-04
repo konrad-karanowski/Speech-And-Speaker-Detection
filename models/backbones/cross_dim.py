@@ -8,7 +8,7 @@ from models.backbones.backbone import Backbone
 class WidthCrossBackbone(Backbone):
 
     """
-    Smaller backbone treating different dimensions in separate way
+    Smaller backbone treating different dimensions in separate way.
     """
 
     def __init__(self, input_size: Tuple[int, int, int]) -> None:
@@ -34,6 +34,4 @@ class WidthCrossBackbone(Backbone):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         fe = self.fe(x)
         res = self.gap(fe).squeeze(-1).squeeze(-1)
-        #res = fe.mean(dim=1).reshape(-1, 27)
-        # raise Exception(f'x: {x.shape} fe: {fe.shape} res: {res.shape}')
         return res
