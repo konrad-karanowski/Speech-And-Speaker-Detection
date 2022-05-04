@@ -17,17 +17,17 @@ def create_spectrogram(
     """Creates spectrogram using Short-Time Fourier's Transform
 
     Args:
-        audio (np.ndarray): signal of shape (N,)
+        audio (np.ndarray): Signal of shape (N,).
         frame_size (int, optional): Size of frame. Must be power of 2. Defaults to 2048.
         hop_size (int, optional): Size of hop. Defaults to 512.
         window_function (str, optional): Function to convolve partial signal with. Defaults to 'hann'.
-        ref (Optional[Function], optional): reference to librosa.power_to_db. Defaults to None.
+        ref (Optional[Function], optional): Reference to librosa.power_to_db. Defaults to None.
 
     Raises:
         ValueError: If such window function is not supported.
 
     Returns:
-        np.ndarray: spectrogram of size (freq_bins, win_size) = (frame_size // 2 + 1, (n_samples - frame_size) // hop_size + 1)
+        np.ndarray: Spectrogram of size (freq_bins, win_size) = (frame_size // 2 + 1, (n_samples - frame_size) // hop_size + 1)
     """
     x_ft = stft(
         x=audio,
@@ -55,16 +55,16 @@ def create_mel_spectrogram(
     """Creates mel spectrogram
 
     Args:
-        audio (np.ndarray): _description_
-        sr (int): _description_
-        frame_size (int): _description_
-        hop_size (int): _description_
-        window_function (str, optional): _description_. Defaults to 'hann'.
-        num_mels (int, optional): _description_. Defaults to 128.
-        ref (Optional[Function], optional): _description_. Defaults to None.
+        audio (np.ndarray): Signal of shape (N,).
+        sr (int): Sampling rate.
+        frame_size (int): Size of frame.
+        hop_size (int): Hop length.
+        window_function (str, optional): Function to convolve partial signal with. Defaults to 'hann'.
+        num_mels (int, optional): Number of mel bins. Defaults to 128.
+        ref (Optional[Callable], optional): Reference to librosa.power_to_db. Defaults to None.
 
     Returns:
-        np.ndarray: _description_
+        np.ndarray: Mel spectrogram of size (..., num_mels).
     """
     mel_spectrogram = librosa.feature.melspectrogram(
         y=audio,
@@ -94,6 +94,22 @@ def create_mfcc_spectrogram(
     ref: Optional[Callable] = None,
     *args,
     **kwargs) -> np.ndarray:
+    """Creates MFCC spectrogram
+
+    Args:
+        audio (np.ndarray): Signal of shape (N,).
+        sr (int): Sampling rate.
+        frame_size (int): Size of frame.
+        hop_size (int): Hop length.
+        window_function (str, optional): Function to convolve partial signal with. Defaults to 'hann'.
+        num_mels (int, optional): Number of mel bins. Defaults to 128.
+        num_mfccs (int, optional): Number of MFCC coefficients. Defaults to 39.
+        dct_type (int, optional): Discrete cosine transform (DCT) type. Defaults to 2.
+        ref (Optional[Callable], optional): Reference to librosa.power_to_db. Defaults to None.
+
+    Returns:
+        np.ndarray: MFCC spectrogram of size (num_mfccs, num_mels)
+    """
     mfcc = librosa.feature.mfcc(
         y=audio,
         sr=sr,
@@ -121,13 +137,13 @@ def _maybe_resample_signal(
     """Resample signal if necessary
 
     Args:
-        signal (np.ndarray): original signal
-        sr (int): original sample rate
-        target_sr (int): desired sample rate
-        res_type (str): strategy for sample rate
+        signal (np.ndarray): Original signal.
+        sr (int): Original sample rate.
+        target_sr (int): Desired sample rate.
+        res_type (str): Strategy for sample rate.
 
     Returns:
-        np.ndarray: processed signal
+        np.ndarray: Processed signal.
     """
     if sr != target_sr:
         signal = librosa.resample(
@@ -146,11 +162,11 @@ def _maybe_cut_down_signal(
     """Cut down signal if necessary
 
     Args:
-        signal (np.ndarray): original signal
-        target_num_samples (_type_): target number of samples
+        signal (np.ndarray): Original signal.
+        target_num_samples (_type_): Target number of samples.
 
     Returns:
-        np.ndarray: processed signal
+        np.ndarray: Processed signal.
     """
     if signal.shape[0] > target_num_samples:
         signal = signal[:target_num_samples]
@@ -164,11 +180,11 @@ def _maybe_pad_right_signal(
     """Pad signal with zeros if necessary
 
     Args:
-        signal (np.ndarray): original signal
-        target_num_samples (_type_): target number of samples 
+        signal (np.ndarray): Original signal.
+        target_num_samples (_type_): Target number of samples.
 
     Returns:
-        np.ndarray: processed signal
+        np.ndarray: Processed signal.
     """
     if signal.shape[0] < target_num_samples:
         zeros = np.zeros(target_num_samples)
@@ -187,14 +203,14 @@ def preprocess_signal(
     """Process signal adjusting sample rate and length
 
     Args:
-        signal (np.ndarray): base signal
-        sr (int): original sampling rate
-        target_sr (int): target sampling rate
-        target_num_samples (int): target number of samples
-        res_type (str): strategy for resampling 
+        signal (np.ndarray): Base signal.
+        sr (int): original Sampling rate.
+        target_sr (int): Target sampling rate.
+        target_num_samples (int): Target number of samples.
+        res_type (str): Strategy for resampling. 
 
     Returns:
-        np.ndarray: processed signal
+        np.ndarray: Processed signal.
     """
     signal = _maybe_resample_signal(signal, sr, target_sr, res_type)
     signal = _maybe_pad_right_signal(signal, target_num_samples)

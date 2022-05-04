@@ -2,6 +2,15 @@ import numpy as np
 
 
 def _omega_coef(x: np.ndarray, N: int) -> np.ndarray:
+    """Calculate omega coefficient for fourier transform
+
+    Args:
+        x (np.ndarray): signal
+        N (int): n-th frequency
+
+    Returns:
+        np.ndarray: partial FT
+    """
     return np.exp(-2j * np.pi * x / N)
 
 
