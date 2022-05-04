@@ -36,6 +36,6 @@ logger:
 
   project: ${core.project_name} 
   entity: 'konrad-karanowski'
-  log_model: False
+  log_model: True
   mode: 'online'
   save_dir: ${core.storage_dir}

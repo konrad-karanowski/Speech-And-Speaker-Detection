@@ -1,22 +1,18 @@
+from typing import *
 import abc
 import os
 import shutil
-from typing import *
 
+import tqdm
 import hydra
 import librosa
 import numpy as np
 import pandas as pd
 import pytorch_lightning as pl
-import tqdm
 from sklearn.model_selection import train_test_split
 from torch.utils.data import DataLoader
 
 from utils import create_df, get_classes
-from datamodules.evaluate_siamese_dataset import EvaluateSiameseModelDataset
-from datamodules.transforms import default_transform
-from datamodules.triplet_dataset import TripletDataset
-from datamodules.classification_dataset import ClassificationDataset
 
 
 class BaseSpeechDataModule(pl.LightningDataModule):
@@ -35,7 +31,9 @@ class BaseSpeechDataModule(pl.LightningDataModule):
         'other'
     ]
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs) -> None:
+        """Base datamodule for speech including preprocessing data, creating spectrograms and dataloaders.
+        """
         super(BaseSpeechDataModule, self).__init__()
         self.save_hyperparameters()
         self.data = None
@@ -66,6 +64,14 @@ class BaseSpeechDataModule(pl.LightningDataModule):
 
     @property
     def input_size(self) -> Tuple[int, int, int]:
+        """Returns size of data sample. 
+
+        Raises:
+            ValueError: If there is no prepared_data for sampling.
+
+        Returns:
+            Tuple[int, int, int]: Spectrogram input size.
+        """
         if self.data is None:
             raise ValueError('There is no data in this datamodule. Call .prepare_data() first!')
         sample_shape = np.load(self.data.iloc[0]['path']).shape
@@ -79,11 +85,11 @@ class BaseSpeechDataModule(pl.LightningDataModule):
             return
 
     def _maybe_create_spectrograms(self, data_dir: str, img_dir: str) -> None:
-        """Create spectrograms from audio files
+        """Create spectrograms from audio files and stores them as numpy arrays.
 
         Args:
-            data_dir (str): combined path to raw audio data
-            img_dir (str): combined path to spectrograms data
+            data_dir (str): Combined path to raw audio data dir.
+            img_dir (str): Combined path to spectrograms data dir.
         """
         if os.path.exists(os.path.join(img_dir)):
             return
@@ -139,63 +145,3 @@ class BaseSpeechDataModule(pl.LightningDataModule):
     @abc.abstractmethod
     def test_dataloader(self) -> DataLoader:
         raise NotImplementedError
-
-
-class SiameseSpeechDatamodule(BaseSpeechDataModule):
-
-    def __init__(self, **kwargs):
-        super(SiameseSpeechDatamodule, self).__init__(**kwargs)
-
-    def train_dataloader(self) -> DataLoader:
-        return DataLoader(
-            TripletDataset(self.data[self.data['split'] == 'train'], transforms=default_transform()),
-            shuffle=True,
-            batch_size=self.hparams.batch_size
-        )
-
-    def val_dataloader(self) -> DataLoader:
-        return DataLoader(
-            TripletDataset(self.data[self.data['split'] == 'val'], transforms=default_transform()),
-            shuffle=False,
-            batch_size=self.hparams.batch_size
-        )
-
-    def test_dataloader(self) -> DataLoader:
-        return DataLoader(
-            EvaluateSiameseModelDataset(self.data[self.data['split'] == 'test'], transforms=default_transform()),
-            shuffle=False,
-            batch_size=self.hparams.batch_size
-        )
-
-
-class FineTuneSpeechDatamodule(BaseSpeechDataModule):
-
-    def __init__(self, **kwargs):
-        super(FineTuneSpeechDatamodule, self).__init__(**kwargs)
-
-    def setup(self) -> None:
-        super(FineTuneSpeechDatamodule, self).setup()
-        self.data['label'] = np.where(self.data['label'] == self.hparams.target_label, 1, 0)
-        self.data['speaker_id'] = np.where(self.data['speaker_id'] == self.hparams.target_speaker, 1, 0)
-
-    def train_dataloader(self) -> DataLoader:
-        return DataLoader(
-            ClassificationDataset(self.data[self.data['split'] == 'train'], transforms=default_transform()),
-            shuffle=True,
-            batch_size=self.hparams.batch_size
-        )
-
-    def val_dataloader(self) -> DataLoader:
-        return DataLoader(
-            ClassificationDataset(self.data[self.data['split'] == 'val'], transforms=default_transform()),
-            shuffle=False,
-            batch_size=self.hparams.batch_size
-        )
-
-    def test_dataloader(self) -> DataLoader:
-        return DataLoader(
-            ClassificationDataset(self.data[self.data['split'] == 'test'], transforms=default_transform()),
-            shuffle=False,
-            batch_size=self.hparams.batch_size
-        )
-    

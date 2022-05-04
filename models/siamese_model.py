@@ -32,6 +32,7 @@ class SiameseModel(pl.LightningModule):
 
     def __init__(self, input_size: int, **kwargs) -> None:
         """Multi-Head Siamese model for pre-training. Learns acoustic embeddings of word and speaker.
+        This model uses TripletMarginLoss as criterion.
 
         Args:
             input_size (int): Backbone input size.

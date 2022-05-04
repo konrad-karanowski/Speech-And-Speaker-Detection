@@ -11,13 +11,6 @@ module:
     eps: 1e-08
     weight_decay: 0.02
 
-  # lr_scheduler:
-  #   _target_: torch.optim.lr_scheduler.CosineAnnealingLR
-  #   T_max: 3
-  #   eta_min: 1e-8 # min value for the lr
-  #   last_epoch: -1
-  #   verbose: False
-
   lr_scheduler:
     _target_: torch.optim.lr_scheduler.ReduceLROnPlateau
     patience: 3
@@ -27,8 +20,7 @@ module:
 
 
   backbone:
-    #_target_: models.backbones.cataluna.CatalunaBackbone
-    _target_: models.backbones.WidthCrossBackbone
+    _target_: models.backbones.cataluna.CatalunaBackbone
 
   process_audio_method: ${datamodule.datamodule.process_audio_method}
   spectrogram_method: ${datamodule.datamodule.spectrogram_method}

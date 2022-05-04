@@ -7,9 +7,9 @@ core:
 
 defaults:
   - hydra: default
-  - model: fine_tune
-  - datamodule: fine_tune
-  - train: fine_tune
+  - model: pre_train
+  - datamodule: pre_train
+  - train: pre_train
   - _self_
   # - _self_ 
 #  - hydra/launcher: joblib

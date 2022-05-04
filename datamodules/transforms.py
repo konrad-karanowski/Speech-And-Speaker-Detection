@@ -1,14 +1,13 @@
-import torch
 from torchvision.transforms import Compose, ToTensor
 
 from audiomentations import SpecCompose, SpecChannelShuffle, SpecFrequencyMask
 
 
 def spectrogram_transforms() -> SpecCompose:
-    """Base transforms using spectrogram version of dataset
+    """Base transforms using spectrogram version of dataset.
 
     Returns:
-        SpecCompose: composition of transforms
+        SpecCompose: Composition of transforms.
     """
     return SpecCompose([
         SpecChannelShuffle(p=0.5),
@@ -17,10 +16,10 @@ def spectrogram_transforms() -> SpecCompose:
 
 
 def default_transform() -> Compose:
-    """Default transform for signal
+    """Default transform for signal.
 
     Returns:
-        trf.Compose: composition of transforms
+        trf.Compose: Composition of transforms.
     """
     return Compose([
         ToTensor()

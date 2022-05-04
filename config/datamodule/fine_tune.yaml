@@ -1,6 +1,6 @@
 datamodule:
 
-  _target_: datamodules.datamodule.FineTuneSpeechDatamodule
+  _target_: datamodules.fine_tuning.fine_tuning_datamodule.FineTuneSpeechDatamodule
 
   process_audio_method:
     _target_: utils.spectrogram_utils.preprocess_signal

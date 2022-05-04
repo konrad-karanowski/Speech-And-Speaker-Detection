@@ -1,6 +1,6 @@
 datamodule:
 
-  _target_: datamodules.datamodule.SiameseSpeechDatamodule
+  _target_: datamodules.pre_training.siamese_datamodule.SiameseSpeechDatamodule
 
   process_audio_method:
     _target_: utils.spectrogram_utils.preprocess_signal
