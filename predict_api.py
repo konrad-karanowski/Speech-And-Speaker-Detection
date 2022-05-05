@@ -12,12 +12,12 @@ model = SiameseModel.load_from_checkpoint('logs/Speech_And_Speaker_Detection/893
 
 
 @app.route('/')
-def home():
+def home() -> str:
     return 'Works'
 
 
 @app.route('/predict', methods=['POST'])
-def predict():
+def predict() -> jsonify.Json:
     data = request.get_json(force=True)
     query, support = data['query'], data['support']
     query = [(np.array(a, dtype=np.float), sr) for a, sr in query]

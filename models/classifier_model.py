@@ -7,6 +7,7 @@ import pytorch_lightning as pl
 from torch import nn
 from torch.optim import Optimizer
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+from transformers import PYTORCH_TRANSFORMERS_CACHE
 
 from models.siamese_model import SiameseHead, SiameseModel
 
@@ -171,7 +172,7 @@ class ClassifierModel(pl.LightningModule):
         speaker_loss = self.criterion_speaker(speaker_logit, y_speaker)
         label_loss = self.criterion_label(label_logit, y_label)
 
-        total_loss = speaker_loss + label_loss
+        total_loss = self.hparams.speaker_a * speaker_loss + self.hparams.label_a * label_loss
 
         self.log_dict({
             'train_label_loss': label_loss.item(),
@@ -180,7 +181,7 @@ class ClassifierModel(pl.LightningModule):
         })
         return total_loss
 
-    def validation_step(self, batch: Any, *args, **kwargs) -> torch.Tensor:
+    def validation_step(self, batch: Any, *args, **kwargs) -> Dict[str, torch.Tensor]:
         """Base PyTorchLightning step for validation process.
 
         Args:
@@ -195,14 +196,19 @@ class ClassifierModel(pl.LightningModule):
         speaker_loss = self.criterion_speaker(speaker_logit, y_speaker)
         label_loss = self.criterion_label(label_logit, y_label)
 
-        total_loss = speaker_loss + label_loss
+        total_loss = self.hparams.speaker_a * speaker_loss + self.hparams.label_a * label_loss
 
         self.log_dict({
             'val_label_loss': label_loss.item(),
             'val_speaker_loss': speaker_loss.item(),
             'val_total_loss': total_loss.item()
         })
-        return total_loss
+        return {
+            'speaker_logit': speaker_logit.cpu(),
+            'label_logit': label_logit.cpu(),
+            'speaker_target': y_speaker.cpu(),
+            'label_target': y_label.cpu()
+        }
 
     def test_step(self, batch: Any, *args, **kwargs) -> Dict[str, torch.Tensor]:
         """Base PyTorchLightning step for testing process.
@@ -224,10 +230,11 @@ class ClassifierModel(pl.LightningModule):
             'label_target': y_label.cpu()
         }
 
-    def _calculate_metrics(self, role: str, y_true: Iterable[int], y_pred: np.ndarray) -> Dict[str, float]:
+    def _calculate_metrics(self, phase: str, role: str, y_true: Iterable[int], y_pred: np.ndarray) -> Dict[str, float]:
         """Calculate metrics from targets and predictions given by the model.
 
         Args:
+            phase (str): Testing or validating phase.
             role (str): Dimension for whom metrics are calculated.
             y_true (Iterable[int]): True labels.
             y_pred (np.ndarray): Predictions given by the model.
@@ -236,18 +243,13 @@ class ClassifierModel(pl.LightningModule):
             Dict[str, float]: Dictionary of metrics for loging.
         """
         return {
-            f'{role}_accuracy': accuracy_score(y_true, y_pred),
-            f'{role}_f1_score': f1_score(y_true, y_pred),
-            f'{role}_precision_score': precision_score(y_true, y_pred),
-            f'{role}_recall_score': recall_score(y_true, y_pred),
+            f'{phase}_{role}_accuracy': accuracy_score(y_true, y_pred),
+            f'{phase}_{role}_f1_score': f1_score(y_true, y_pred),
+            f'{phase}_{role}_precision_score': precision_score(y_true, y_pred),
+            f'{phase}_{role}_recall_score': recall_score(y_true, y_pred),
         }
 
-    def test_epoch_end(self, outputs: Iterable[Dict[str, torch.Tensor]]) -> None:
-        """Calculate metrics at the end of testing process.
-
-        Args:
-            outputs (Iterable[Dict[str, torch.Tensor]]): Outputs from training step.
-        """
+    def _val_test_end(self, phase: str, outputs: Iterable[Dict[str, torch.Tensor]]) -> None:
         label_trues = []
         speaker_trues = []
         label_preds = []
@@ -257,7 +259,24 @@ class ClassifierModel(pl.LightningModule):
             speaker_trues.extend(output['speaker_target'])
             label_preds.extend(output['label_logit'].argmax(dim=1))
             speaker_preds.extend(output['speaker_logit'].argmax(dim=1))
-        label_dict = self._calculate_metrics('label', label_trues, np.array(label_preds))
-        speaker_dict = self._calculate_metrics('speaker', speaker_trues, np.array(speaker_preds))
+        label_dict = self._calculate_metrics(phase, 'label', label_trues, np.array(label_preds))
+        speaker_dict = self._calculate_metrics(PYTORCH_TRANSFORMERS_CACHE, 'speaker', speaker_trues, np.array(speaker_preds))
         self.log_dict(label_dict)
         self.log_dict(speaker_dict)
+
+    def validation_epoch_end(self, outputs: Iterable[Dict[str, torch.Tensor]]) -> None:
+        """Calculate metrics at the end of testing process.
+
+        Args:
+            outputs (Iterable[Dict[str, torch.Tensor]]): Outputs from validation step.
+        """
+        self._val_test_end('val', outputs)
+
+
+    def test_epoch_end(self, outputs: Iterable[Dict[str, torch.Tensor]]) -> None:
+        """Calculate metrics at the end of testing process.
+
+        Args:
+            outputs (Iterable[Dict[str, torch.Tensor]]): Outputs from training step.
+        """
+        self._val_test_end('test', outputs)

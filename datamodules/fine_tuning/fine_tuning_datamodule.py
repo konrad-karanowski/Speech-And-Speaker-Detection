@@ -18,9 +18,9 @@ class FineTuneSpeechDatamodule(BaseSpeechDataModule):
     def setup(self) -> None:
         """Setup dataset. Simplify task for binary classification.
         """
-        super(FineTuneSpeechDatamodule, self).setup()
         self.data['label'] = np.where(self.data['label'] == self.hparams.target_label, 1, 0)
         self.data['speaker_id'] = np.where(self.data['speaker_id'] == self.hparams.target_speaker, 1, 0)
+        super(FineTuneSpeechDatamodule, self).setup()
 
     def train_dataloader(self) -> DataLoader:
         """Creates train dataloader (for multitask binary classification).

@@ -24,6 +24,9 @@ callbacks:
   - _target_: pytorch_lightning.callbacks.progress.tqdm_progress.TQDMProgressBar
     refresh_rate: 1
 
+  - _target_: callbacks.save_predictions.SaveOutputsWandb
+    save_name: 'outputs.csv'
+
   - _target_: pytorch_lightning.callbacks.LearningRateMonitor
     logging_interval: "step"
     log_momentum: False
@@ -33,6 +36,6 @@ logger:
 
   project: ${core.project_name} 
   entity: 'konrad-karanowski'
-  log_model: False
+  log_model: True
   mode: 'online'
   save_dir: ${core.storage_dir}

@@ -82,54 +82,6 @@ class SiameseModel(pl.LightningModule):
         label_embedding, speaker_embedding = self.head_label(fe), self.head_speaker(fe)
         return label_embedding, speaker_embedding
 
-    # def _predict(self,
-    #              query: torch.Tensor,
-    #              support: torch.Tensor,
-    #              ) -> Tuple[torch.Tensor, torch.Tensor]:
-        
-    #     with torch.no_grad():
-    #         bs, _, _, _ = support.shape
-    #         bs, _, _, _ = query.shape
-
-    #         # concat
-    #         samples = torch.cat([query, support])
-    #         # pass through backbone
-    #         embedding = self.backbone(samples)
-
-    #         label_repr = self.head_label(embedding)
-    #         query_label_repr = label_repr[:bs]
-    #         support_label_repr = label_repr[bs:]
-
-    #         speaker_repr = self.head_speaker(embedding)
-    #         query_speaker_repr = speaker_repr[:bs]
-    #         support_speaker_repr = speaker_repr[bs:]
-
-    #         label_distances = F.pairwise_distance(query_label_repr, support_label_repr)
-    #         speaker_distances = F.pairwise_distance(query_speaker_repr, support_speaker_repr)
-
-    #         return label_distances, speaker_distances
-
-    # def _process_audio(self, audio: np.ndarray, sr: int) -> torch.Tensor:
-    #     signal = self.preprocess_method(audio, sr)
-    #     spectrogram = self.spectogram_method(signal, self.hparams.process_audio_method.target_sr)
-    #     spectrogram = torch.tensor(spectrogram)[None, None, :, :]
-    #     return spectrogram
-
-    # def predict(self,
-    #             query_samples: List[Tuple[np.ndarray, int]],
-    #             support_sample: Tuple[np.ndarray, int]
-    #             ) -> Dict[str, np.ndarray]:
-    #     query = torch.cat([self._process_audio(*sample) for sample in query_samples]).float()
-    #     support = self._process_audio(*support_sample).repeat(len(query_samples), 1, 1, 1).float()
-
-    #     assert support.shape == query.shape, \
-    #         f'Support and query should be same size but got: {support.shape} and {query.shape}'
-    #     label_distances, speaker_distances = self._predict(query, support)
-    #     return {
-    #         'label_distances': label_distances.cpu().numpy().tolist(),
-    #         'speaker_distances': speaker_distances.cpu().numpy().tolist(),
-    #     }
-
     def _inner_step(self, batch: Dict[str, Any]) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """Inner step of calculating embeddings of speaker and label.
 

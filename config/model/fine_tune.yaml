@@ -4,6 +4,9 @@ module:
 
   dropout: 0.3
 
+  speaker_a : 1.0
+  label_a: 2.5
+
   optimizer:
     _target_: torch.optim.AdamW
     lr: 1e-5
@@ -14,10 +17,14 @@ module:
   lr_scheduler:
     _target_: torch.optim.lr_scheduler.ReduceLROnPlateau
     patience: 3
+
+  # lr_scheduler:
+  #   _target_: torch.optim.lr_scheduler.CosineAnnealingLRScheduler
+  #   T_max: 5
     
   monitor: ${train.monitor.metric}
   mode: ${train.monitor.mode}
 
   process_audio_method: ${datamodule.datamodule.process_audio_method}
   spectrogram_method: ${datamodule.datamodule.spectrogram_method}
-  checkpoint: '/home/konradkaranowski/Speech-And-Speaker-Detection/logs/Speech_And_Speaker_Detection/1zn9x2ub/checkpoints/epoch=11-step=19415.ckpt'
+  checkpoint: 'artifacts/model-30249sth:v0/model.ckpt'

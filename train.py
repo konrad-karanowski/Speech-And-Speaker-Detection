@@ -1,10 +1,10 @@
-import logging
 from typing import *
+import logging
 
 import hydra
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import Callback
-from omegaconf import OmegaConf
+from omegaconf import DictConfig
 
 from common import PROJECT_ROOT
 
@@ -13,11 +13,12 @@ pylogger = logging.getLogger(__name__)
 
 def build_callbacks(cfg: Any, *args: Callback) -> List[Callback]:
     """Instantiate the callbacks given their configuration.
+
     Args:
-        cfg: a list of callbacks instantiable configuration
-        *args: a list of extra callbacks already instantiated
+        cfg (Any): List of callbacks instantiable configuration.
+
     Returns:
-        the complete list of callbacks to use
+        List[Callback]: List of callbacks for training.
     """
     callbacks: List[Callback] = list(args)
     for callback in cfg:
@@ -28,10 +29,14 @@ def build_callbacks(cfg: Any, *args: Callback) -> List[Callback]:
 
 
 @hydra.main(config_path=str(PROJECT_ROOT / 'config'), config_name='default')
-def main(config):
+def main(config: DictConfig) -> None:
+    """Creates datamodule, model, trains and tests it.
+
+    Args:
+        config (DictConfig): Configuration provided by Hydra.
+    """
     datamodule = hydra.utils.instantiate(config.datamodule.datamodule, _recursive_=False)
     datamodule.prepare_data()
-    datamodule.setup()
 
     model = hydra.utils.instantiate(config.model.module, input_size=datamodule.input_size, _recursive_=False)
 

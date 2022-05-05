@@ -20,12 +20,24 @@ class AbstractSaveOutputsCallback(Callback):
     def on_test_batch_end(self, trainer, pl_module, outputs, *args, **kwargs):
         self.outputs.append(outputs)
 
+    def _process_outputs(self, output):
+        subpoutput = {}
+        if 'speaker_logit' in output.keys():
+            subpoutput['label_target'] = output['label_target']
+            subpoutput['speaker_target'] = output['speaker_target']
+            subpoutput['speaker_0'] = output['speaker_logit'][:, 0]
+            subpoutput['speaker_1'] = output['speaker_logit'][:, 1]
+            subpoutput['label_0'] = output['label_logit'][:, 0]
+            subpoutput['label_1'] = output['label_logit'][:, 1]
+            return subpoutput
+
+
     def _create_dataframe(self) -> pd.DataFrame:
         if not self.outputs:
             return None
         dfs = []
         for suboutput in self.outputs:
-
+            suboutput = self._process_outputs(suboutput)
             df = pd.DataFrame(suboutput)
             dfs.append(df)
         cat_df = pd.concat(dfs, ignore_index=True)     
@@ -34,8 +46,6 @@ class AbstractSaveOutputsCallback(Callback):
     @abc.abstractmethod
     def on_test_end(self, *args, **kwargs):
         pass
-
-
 
 class SaveOutputsWandb(AbstractSaveOutputsCallback):
 
