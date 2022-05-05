@@ -27,4 +27,4 @@ module:
 
   process_audio_method: ${datamodule.datamodule.process_audio_method}
   spectrogram_method: ${datamodule.datamodule.spectrogram_method}
-  checkpoint: 'artifacts/model-30249sth:v0/model.ckpt'
+  checkpoint: '/home/konradkaranowski/Speech-And-Speaker-Detection/artifacts/model-xbltrpx2:v0/model.ckpt'

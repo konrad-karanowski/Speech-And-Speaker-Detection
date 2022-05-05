@@ -7,6 +7,7 @@ from pytorch_lightning.callbacks import Callback
 from omegaconf import DictConfig
 
 from common import PROJECT_ROOT
+from models.siamese_model import SiameseModel
 
 pylogger = logging.getLogger(__name__)
 
@@ -38,7 +39,11 @@ def main(config: DictConfig) -> None:
     datamodule = hydra.utils.instantiate(config.datamodule.datamodule, _recursive_=False)
     datamodule.prepare_data()
 
-    model = hydra.utils.instantiate(config.model.module, input_size=datamodule.input_size, _recursive_=False)
+    if 'checkpoint' in config.model.module.keys():
+        pretrained = SiameseModel.load_from_checkpoint(config.model.module.checkpoint)
+        model = hydra.utils.instantiate(config.model.module, model=pretrained, _recursive_=False)
+    else:
+        model = hydra.utils.instantiate(config.model.module, input_size=datamodule.input_size, _recursive_=False)
 
     logger = hydra.utils.instantiate(config.train.logger)
 

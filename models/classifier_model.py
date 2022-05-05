@@ -55,13 +55,12 @@ class Classifier(nn.Module):
 
 class ClassifierModel(pl.LightningModule):
 
-    def __init__(self, **kwargs):
+    def __init__(self, model, **kwargs):
         """Lightning classifier models for fine-tuning. Used as final model for inference.
         """
         super(ClassifierModel, self).__init__()
         self.save_hyperparameters()
 
-        model = SiameseModel.load_from_checkpoint(self.hparams.checkpoint)
         self.criterion_label = nn.CrossEntropyLoss()
         self.criterion_speaker = nn.CrossEntropyLoss()
 
