@@ -1,14 +1,16 @@
 import numpy as np
 import hydra
 from flask import Flask, request, jsonify
+from torch import dropout
 
-from models.siamese_model import SiameseModel
+from models.classifier_model import ClassifierModel
 from common import PROJECT_ROOT
+from models.siamese_model import SiameseModel
 
 
 app = Flask(__name__)
-hydra.initialize(config_path='config', job_name='test_api')
-model = SiameseModel.load_from_checkpoint('logs/Speech_And_Speaker_Detection/893660w5/checkpoints/epoch=0-step=1040.ckpt')
+pre_trained = SiameseModel.load_from_checkpoint('/Users/konradkaranowski/PythonProjects/Speech-And-Speaker-Detection/artifacts/model-30249sth:v0/model.ckpt')
+model = ClassifierModel.load_from_checkpoint('model', model=pre_trained)
 
 
 @app.route('/')
@@ -17,12 +19,12 @@ def home() -> str:
 
 
 @app.route('/predict', methods=['POST'])
-def predict() -> jsonify.Json:
+def predict():
     data = request.get_json(force=True)
-    query, support = data['query'], data['support']
+    query = data['query']
     query = [(np.array(a, dtype=np.float), sr) for a, sr in query]
-    support = (np.array(support[0], dtype=np.float), support[1])
-    predictions = model.predict(query, support)
+    predictions = model.predict(query)
+    print(type(jsonify(predictions)))
     return jsonify(predictions)
 
 
