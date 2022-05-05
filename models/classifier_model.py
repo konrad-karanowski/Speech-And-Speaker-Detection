@@ -7,7 +7,6 @@ import pytorch_lightning as pl
 from torch import nn
 from torch.optim import Optimizer
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
-from transformers import PYTORCH_TRANSFORMERS_CACHE
 
 from models.siamese_model import SiameseHead, SiameseModel
 
@@ -55,7 +54,7 @@ class Classifier(nn.Module):
 
 class ClassifierModel(pl.LightningModule):
 
-    def __init__(self, model, **kwargs):
+    def __init__(self, model: SiameseModel, **kwargs):
         """Lightning classifier models for fine-tuning. Used as final model for inference.
         """
         super(ClassifierModel, self).__init__()
@@ -152,10 +151,10 @@ class ClassifierModel(pl.LightningModule):
 
         proba_speaker, proba_label = self._predict(query)
         return {
-            'label_proba': proba_speaker[:, 1].cpu().numpy().tolist(),
-            'speaker_proba': proba_label[:, 1].cpu().numpy().tolist(),
+            'label_proba': proba_speaker.cpu().tolist(),
+            'speaker_proba': proba_label.cpu().tolist(),
         }
-
+        
     def training_step(self, batch: Any, *args, **kwargs) -> torch.Tensor:
         """Base PyTorchLightning step for training process.
 
@@ -259,7 +258,7 @@ class ClassifierModel(pl.LightningModule):
             label_preds.extend(output['label_logit'].argmax(dim=1))
             speaker_preds.extend(output['speaker_logit'].argmax(dim=1))
         label_dict = self._calculate_metrics(phase, 'label', label_trues, np.array(label_preds))
-        speaker_dict = self._calculate_metrics(PYTORCH_TRANSFORMERS_CACHE, 'speaker', speaker_trues, np.array(speaker_preds))
+        speaker_dict = self._calculate_metrics(phase, 'speaker', speaker_trues, np.array(speaker_preds))
         self.log_dict(label_dict)
         self.log_dict(speaker_dict)
 
