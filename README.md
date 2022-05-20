@@ -2,11 +2,11 @@
 This repository is a part of the final project of Artifical Intelligence course led by bsc. Julita Bielaniewicz. Project's goal was to create the application for voice unlocking. System should detect not only the spoken word (password), but also the speaker (system's owner). The assumption of the project was to create a network from scratch, which is why I didn't use conformer and other more complicated and more computationally expensive methods.
 This repository consists of code for training machine learning model, and also has a simply flask's API for predicting using it. Another part, application itself is located [here](https://github.com/konrad-karanowski/Speaker-Lock). 
 
-# About the model
-Model's training is divided into two parts: pre-training and fine-tuning.
-
 # Audio-features
 During the experiments, two types of  signal preprocessing methods were used: Mel-Spectrograms and Mel-Frequency Cepstra Coefficients. First method was performing better during the real-world scenario and is recommended for this task.
+
+# About the model
+Model's training is divided into two parts: pre-training and fine-tuning.
 
 ## Pre-training stage
 During pre-training stage, model was trained in Siamese-Network setup with two separated heads in order to obtain acoustic-word-embeddings and acoustic-speaker-embeddings. TripletMarginLoss was used as a cost function. During this stage, model was trained on [this](https://www.kaggle.com/datasets/bharatsahu/speech-commands-classification-dataset) data.
