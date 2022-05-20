@@ -19,7 +19,7 @@ For training the model just run:
 ```
 python train.py
 ```
-This project uses the Hydra framework, so you can put optional parameters. Whole configuration setup is stored in a config directory and its subdirectories.
+This project uses the Hydra framework, so you can pass optional parameters. Whole configuration setup is stored in a config directory and its subdirectories.
 
 For hosting proper model run:
 ```
